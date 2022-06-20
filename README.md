@@ -3,7 +3,7 @@
 
 ---
 
-###📦 install 📚
+### 📦 install 📚
 
 ```bash
 git clone https://github.com/ssolson/stealth_trustor.git
