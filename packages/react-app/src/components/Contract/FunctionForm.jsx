@@ -181,6 +181,7 @@ export default function FunctionForm({ contractFunction, functionInfo, provider,
               const args = functionInfo.inputs.map((input, inputIndex) => {
                 const key = getFunctionInputKey(functionInfo, input, inputIndex);
                 let value = form[key];
+                console.log(value);
                 if (input.baseType === "array") {
                   value = JSON.parse(value);
                 } else if (input.type === "bool") {

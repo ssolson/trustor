@@ -25,9 +25,10 @@ const { isAddress, getAddress, formatUnits, parseUnits } = utils;
 //
 // Select the network you want to deploy to here:
 //
+// const defaultNetwork = "mainnet";
 const defaultNetwork = "localhost";
 
-const mainnetGwei = 115;
+const mainnetGwei = 50;
 
 function mnemonic() {
   try {
@@ -74,7 +75,7 @@ module.exports = {
       },
     },
     mainnet: {
-      url: "https://mainnet.infura.io/v3/460f40a260564ac4a4f4b3fffb032dad", // <---- YOUR INFURA ID! (or it won't work)
+      url: "https://mainnet.infura.io/v3/a1dee3c8d2a1425f9711849109bb86ce", // <---- YOUR INFURA ID! (or it won't work)
       //      url: "https://speedy-nodes-nyc.moralis.io/XXXXXXXXXXXXXXXXXXXXXXXXX/eth/mainnet", // <---- YOUR MORALIS ID! (not limited to infura)
       gasPrice: mainnetGwei * 1000000000,
       accounts: {
@@ -229,7 +230,7 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.8.4",
+        version: "0.8.14",
         settings: {
           optimizer: {
             enabled: true,
@@ -256,8 +257,9 @@ module.exports = {
       default: 0, // here this will by default take the first account as deployer
     },
   },
-  etherscan: {
-    apiKey: "PSW8C433Q667DVEX5BCRMGNAH9FSGFZ7Q8", // your api key here
+  etherscan: {    
+    // apiKey: "DNXJA8RX2Q3VZ4URQIWP7Z68CJXQZSC6AW", 
+    apiKey: "RQD26QHHW5EMGRK4BCPTMU22576IU17FVA", 
   },
 };
 

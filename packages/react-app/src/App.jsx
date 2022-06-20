@@ -255,7 +255,7 @@ function App(props) {
     "0x34aA3F359A9D614239015126635CE7732c18fDF3",
   ]);
 
-  const vendorAddress = readContracts && readContracts.Vendor && readContracts.Vendor.address;
+  const vendorAddress = readContracts && readContracts.SimpleT && readContracts.SimpleT.address;
 
   const vendorETHBalance = useBalance(localProvider, vendorAddress);
   if (DEBUG) console.log("💵 vendorETHBalance", vendorETHBalance ? ethers.utils.formatEther(vendorETHBalance) : "...");
@@ -573,7 +573,7 @@ function App(props) {
               }}
               to="/"
             >
-              YourToken
+              SimpleTrust
             </Link>
           </Menu.Item>
           <Menu.Item key="/contracts">
@@ -762,7 +762,7 @@ function App(props) {
           </Route>
           <Route path="/contracts">
             <Contract
-              name="Vendor"
+              name="SimpleT"
               signer={userSigner}
               provider={localProvider}
               address={address}
@@ -770,7 +770,7 @@ function App(props) {
               contractConfig={contractConfig}
             />
             <Contract
-              name="YourToken"
+              name="USDC"
               signer={userSigner}
               provider={localProvider}
               address={address}
