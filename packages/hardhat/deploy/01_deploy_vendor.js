@@ -10,8 +10,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   console.log('\t'," 🧑‍🏫 Deployer Address: ", deployer)
 
  
-
-  
   // Deploy USDC Token
    const deployUSDC = await deploy("USDC", {
     from: deployer,
@@ -24,14 +22,19 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
 
   // Input arguments
-   const Grantor = "0x79864b719729599a4695f62ad22AD488AB290e58";
-   const Trustee = "0x79864b719729599a4695f62ad22AD488AB290e58";
-   const Beneficiary = ["0xc6bEcBBB10327e57c0083A3127e5F54aB3D2Af23", 
-                        "0x619cCf252351dAAb7cc9E239538c26e942E9430f"];
-   const Percentages = [75,25];
-
+  //  const Grantor = "0x79864b719729599a4695f62ad22AD488AB290e58";
+  //  const Trustee = "0x79864b719729599a4695f62ad22AD488AB290e58";
+  //  const Beneficiary = ["0xc6bEcBBB10327e57c0083A3127e5F54aB3D2Af23", 
+  //                       "0x619cCf252351dAAb7cc9E239538c26e942E9430f"];
+  //  const Percentages = [75,25];
   // Combine inputs to pass to constructor
-  let argz = [Grantor, Trustee, Beneficiary, Percentages]
+  // let argz = [Grantor, Trustee, Beneficiary, Percentages]
+
+   [Grantor, Trustee, Beneficiary1, Beneficiary2, Beneficiary3] = await ethers.getSigners();
+   const Beneficiary = [Beneficiary1.address, Beneficiary2.address];
+   const Percentages = [75,25];
+   let argz = [Grantor.address, Trustee.address, Beneficiary, Percentages]
+
 
   const deploySimpleT = await deploy("SimpleT", {
     from: deployer,
@@ -40,7 +43,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
   
 
-  // // Get the Trust contract
+  // Get the Trust contract
   const vendor = await ethers.getContract("SimpleT", deployer);
   console.log("SimpleT: ", vendor.address);
   
