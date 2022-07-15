@@ -13,7 +13,10 @@ import {
   Table, 
   Tag, 
   Breadcrumb, 
-  Layout
+  Layout,
+  Form, 
+  Select, 
+  Space
 } from "antd";
 const { Header, Footer, Sider, Content } = Layout;
 import "antd/dist/antd.css";
@@ -25,7 +28,10 @@ import {
   FileOutlined,
   PieChartOutlined,
   TeamOutlined,
-  FieldTimeOutlined
+  FieldTimeOutlined,
+  MinusCircleOutlined, 
+  PlusOutlined,
+  PlusCircleOutlined
 } from '@ant-design/icons';
 import Authereum from "authereum";
 import {
@@ -177,6 +183,9 @@ const web3Modal = new Web3Modal({
     },
   },
 });
+
+
+
 
 function App(props) {
   const mainnetProvider =
@@ -460,6 +469,19 @@ function App(props) {
   const [releaseAssets, setReleaseAssets] = useState();
   
 
+
+
+
+
+  const [form] = Form.useForm();
+
+  const onFinish = (values) => {
+    console.log('Received values of form:', values);
+  };
+
+
+
+
   return (
     <div className="App">
       <BrowserRouter>
@@ -484,7 +506,6 @@ function App(props) {
                     <TrusteeTable readContracts={readContracts} />
                   <h1> BENEFICIARIES </h1>
                     <BeneficiaryTable readContracts={readContracts} />
-                    
                   </Route>
                   <Route exact path="/grantor/overview"> 
                     <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
@@ -492,11 +513,10 @@ function App(props) {
                       <GrantorTable readContracts={readContracts} />
                   </Route>
                   <Route exact path="/grantor/admin">
-                  <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                  <GrantorTable readContracts={readContracts} />
-                  <Divider orientation="left">Modify Grantor Actions</Divider>
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <GrantorTable readContracts={readContracts} />
+                    <Divider orientation="left">Modify Grantor Actions</Divider>
                     <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
-                    
                       <Card title="Add Grantor" >                
                         <div className="site-input-group-wrapper">
                           <Input.Group compact>
@@ -520,7 +540,7 @@ function App(props) {
                     <TrusteeTable readContracts={readContracts} />
                     <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
                     
-                      <Card title="Add Trustee" extra={<a href="#">code</a>}>                
+                      <Card title="Add Trustee" >                
                         <div className="site-input-group-wrapper">
                           <Input.Group compact>
                             <Input
@@ -542,9 +562,111 @@ function App(props) {
                         </div>
                       </Card>
                     </div>
+                    
                     <Divider orientation="left">Modify Beneficiary Actions</Divider>
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <BeneficiaryTable readContracts={readContracts} />
+                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
+                      <Form form={form} 
+                        name="dynamic_form_nest_item" 
+                        onFinish={onFinish} 
+                        autoComplete="off" 
+                        >
+                        <Form.List name="newBeneficiaries">
+                          {(fields, { add, remove }) => (
+                            <>
+                              {fields.map((field) => (
+                                <Space  key={field.key} align="baseline">
+                                {/* <div key={field.key}> */}
+                                  
+                                  <Form.Item
+                                    // {...field}
+                                    label="Beneficiary"
+                                    name={[field.name, 'address']}
+                                    rules={[
+                                      {
+                                        required: true,
+                                        message: 'Missing Beneficiary address',
+                                      },
+                                    ]}
+                                    >
+                                    <Input />
+                                  </Form.Item>
+                                  <Form.Item
+                                    // {...field}
+                                    label="Shares"
+                                    name={[field.name, 'shares']}
+                                    rules={[
+                                      {
+                                        required: true,
+                                        message: 'Missing Shares',
+                                      },
+                                    ]}
+                                    >
+                                    <Input />
+                                  </Form.Item>
+
+                                  <MinusCircleOutlined onClick={() => remove(field.name)} />
+                                
+                                {/* </div> */}
+                                </Space >
+                              ))}
+
+                              <Form.Item>
+                                <Button type="dashed" onClick={() => add()} block icon={<PlusCircleOutlined />}>
+                                  Add Beneficiary
+                                </Button>
+                              </Form.Item>
+                            </>
+                          )}
+                        </Form.List>
+                        <Form.Item>
+                          <Button 
+                            type="primary" 
+                            htmlType="submit"
+                            onClick={async () => {
+                              let vals = form.getFieldValue('newBeneficiaries');
+                              let  addresses = vals.map(element => element.address)
+                              let shares = vals.map(element => element.shares)
+                              
+                              
+                              // console.log('newBeneficiaries', vals);
+                              console.log('addresses', addresses);
+                              console.log('shares', shares);
+                              const result = tx(writeContracts.SimpleT.setBeneficiaries(addresses, shares), )
+                              console.log('result', result);
+
+                            }}
+                            >
+                            Submit
+                          </Button>
+                        </Form.Item>
+                      </Form>
+                    </div>
 
                   </Route>
+
+                  <Route exact path="/grantor/approve"> 
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <h1> GRANTORS </h1>
+                      <GrantorTable readContracts={readContracts} />
+
+
+                      <Card title="Release Right, Title, and Interest" extra={<a href="#">code</a>}>                
+                        <div className="site-input-group-wrapper">
+                          <Button
+                            type={"primary"}
+                            onClick={async () => {
+                              const result = tx(writeContracts.SimpleT.assignAssetsToTrust(), )}
+                            } 
+                            // disabled={!tokenSellAmount.valid} IsGrantor && Active=False
+                            >
+                            Assign Assets To Trust
+                          </Button>  
+                        </div>
+                      </Card>
+                  </Route>
+
                   <Route exact path="/trustee/overview">
                   <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
                   <h1> Trustees </h1>
@@ -571,44 +693,7 @@ function App(props) {
                     
                   </Route>
 
-                  <Route exact path="/grantor/approve"> 
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <h1> GRANTORS </h1>
-                      <GrantorTable readContracts={readContracts} />
 
-
-                      <Card title="Release right, title, and Interest" extra={<a href="#">code</a>}>                
-                        <div className="site-input-group-wrapper">
-                          <Button
-                            type={"primary"}
-                            onClick={async () => {
-                              const result = tx(writeContracts.SimpleT.assignAssetsToTrust(), update => {
-                                console.log("📡 Transaction Update:", update);
-                                if (update && (update.status === "confirmed" || update.status === 1)) {
-                                  console.log(" 🍾 Transaction " + update.hash + " finished!");
-                                  console.log(
-                                    " ⛽️ " +
-                                      update.gasUsed +
-                                      "/" +
-                                      (update.gasLimit || update.gas) +
-                                      " @ " +
-                                      parseFloat(update.gasPrice) / 1000000000 +
-                                      " gwei",
-                                  );
-                                }
-                              });
-                              console.log("awaiting metamask/web3 confirm result...", result);
-                              console.log(await result);
-                            }} 
-                            // disabled={!tokenSellAmount.valid} IsGrantor && Active=False
-                            >
-                            Assign Assets To Trust
-                          </Button>  
-                        </div>
-                      </Card>
-
-
-                  </Route>
 
 
 

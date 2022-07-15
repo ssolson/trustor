@@ -88,6 +88,7 @@ abstract contract Beneficiary is Roles {
         for (uint256 i = 0; i < beneficiaries.length; i++) {
             account = beneficiaries[i];
             revokeRole(BENEFICIARY_ROLE, account);
+            _shares[account] = 0;
         }
         delete beneficiaries;
         _totalShares = 0;
