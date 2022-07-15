@@ -1,7 +1,32 @@
 import Portis from "@portis/web3";
 import WalletConnectProvider from "@walletconnect/web3-provider";
-import { Alert, Button, Card, Col, Divider, Input, List, Menu, Row } from "antd";
+import { 
+  Alert, 
+  Button, 
+  Card, 
+  Col, 
+  Divider, 
+  Row,
+  Input, 
+  List, 
+  Menu,  
+  Table, 
+  Tag, 
+  Breadcrumb, 
+  Layout
+} from "antd";
+const { Header, Footer, Sider, Content } = Layout;
 import "antd/dist/antd.css";
+import { 
+  LaptopOutlined, 
+  NotificationOutlined, 
+  UserOutlined,
+  DesktopOutlined,
+  FileOutlined,
+  PieChartOutlined,
+  TeamOutlined,
+  FieldTimeOutlined
+} from '@ant-design/icons';
 import Authereum from "authereum";
 import {
   useBalance,
@@ -16,10 +41,10 @@ import { useEventListener } from "eth-hooks/events/useEventListener";
 import Fortmatic from "fortmatic";
 import React, { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
-//import Torus from "@toruslabs/torus-embed"
+
 import WalletLink from "walletlink";
 import Web3Modal from "web3modal";
-import "./App.css";
+// import "./App.css";
 import {
   Account,
   Address,
@@ -28,10 +53,17 @@ import {
   Contract,
   Faucet,
   GasGauge,
-  Header,
+  LocalHeader,
   Ramp,
   ThemeSwitch,
+  GrantorTable,
+  TrusteeTable,
+  BeneficiaryTable,
+  SideBar,
 } from "./components";
+import { AddGrantor, ReleaseAssets } from "./components/ContractFunctions";
+import {AllTrustsPage, FavoritesPage, NewTrustPage} from "./pages";
+import {MainNavigation} from "./components/layout/"
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 
@@ -39,25 +71,11 @@ import { Transactor } from "./helpers";
 import externalContracts from "./contracts/external_contracts";
 import deployedContracts from "./contracts/hardhat_contracts.json";
 
+import './index.css';
+import background from './logo/Trustor.jpg';
+import logo from './logo/Trustor_name_white.png';
+
 const { ethers } = require("ethers");
-/*
-    Welcome to 🏗 scaffold-eth !
-
-    Code:
-    https://github.com/austintgriffith/scaffold-eth
-
-    Support:
-    https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA
-    or DM @austingriffith on twitter or telegram
-
-    You should get your own Infura.io ID and put it in `constants.js`
-    (this is your connection to the main Ethereum network for ENS etc.)
-
-
-    🌏 EXTERNAL CONTRACTS:
-    You can also bring in contract artifacts in `constants.js`
-    (and then use the `useExternalContractLoader()` hook!)
-*/
 
 /// 📡 What chain are your contracts deployed to?
 const targetNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
@@ -142,19 +160,6 @@ const web3Modal = new Web3Modal({
         key: "pk_live_5A7C91B2FC585A17", // required
       },
     },
-    // torus: {
-    //   package: Torus,
-    //   options: {
-    //     networkParams: {
-    //       host: "https://localhost:8545", // optional
-    //       chainId: 1337, // optional
-    //       networkId: 1337 // optional
-    //     },
-    //     config: {
-    //       buildEnv: "development" // optional
-    //     },
-    //   },
-    // },
     "custom-walletlink": {
       display: {
         logo: "https://play-lh.googleusercontent.com/PjoJoG27miSglVBXoXrxBSLveV6e3EeBPpNY55aiUUBM9Q1RCETKCOqdOkX2ZydqVf0",
@@ -229,9 +234,6 @@ function App(props) {
   // 🏗 scaffold-eth is full of handy hooks like this one to get your balance:
   const yourLocalBalance = useBalance(localProvider, address);
 
-  // Just plug in different 🛰 providers to get your balance on different chains:
-  const yourMainnetBalance = useBalance(mainnetProvider, address);
-
   const contractConfig = { deployedContracts: deployedContracts || {}, externalContracts: externalContracts || {} };
 
   // Load in your local 📝 contract and read a value from it:
@@ -241,7 +243,6 @@ function App(props) {
   const writeContracts = useContractLoader(userSigner, contractConfig, localChainId);
 
   // EXTERNAL CONTRACT EXAMPLE:
-  //
   // If you want to bring in the mainnet DAI contract it would look like:
   const mainnetContracts = useContractLoader(mainnetProvider, contractConfig);
 
@@ -250,53 +251,23 @@ function App(props) {
     console.log(`⛓ A new mainnet block is here: ${mainnetProvider._lastBlockNumber}`);
   });
 
-  // Then read your DAI balance like:
-  const myMainnetDAIBalance = useContractReader(mainnetContracts, "DAI", "balanceOf", [
-    "0x34aA3F359A9D614239015126635CE7732c18fDF3",
+  const trustAddress = readContracts && readContracts.SimpleT && readContracts.SimpleT.address;
+
+  const trustETHBalance = useBalance(localProvider, trustAddress);
+  if (DEBUG) console.log("💵 trustETHBalance", trustETHBalance ? ethers.utils.formatEther(trustETHBalance) : "...");
+
+  const trustTokenApproval = useContractReader(readContracts, "SimpleT", "isApprovedForAll", [
+    address, trustAddress
   ]);
+  console.log("🤏 trustTokenApproval",trustTokenApproval)
 
-  const vendorAddress = readContracts && readContracts.SimpleT && readContracts.SimpleT.address;
+  const tokensPerGrantor = useContractReader(readContracts, "SimpleT", "tokensPerGrantor");
+  console.log("🏦 tokensPerEth:", tokensPerGrantor ? ethers.utils.formatEther(tokensPerGrantor) : "...");
 
-  const vendorETHBalance = useBalance(localProvider, vendorAddress);
-  if (DEBUG) console.log("💵 vendorETHBalance", vendorETHBalance ? ethers.utils.formatEther(vendorETHBalance) : "...");
 
-  const vendorApproval = useContractReader(readContracts, "YourToken", "allowance", [
-    address, vendorAddress
-  ]);
-  console.log("🤏 vendorApproval",vendorApproval)
+  
 
-  const vendorTokenBalance = useContractReader(readContracts, "YourToken", "balanceOf", [vendorAddress]);
-  console.log("🏵 vendorTokenBalance:", vendorTokenBalance ? ethers.utils.formatEther(vendorTokenBalance) : "...");
 
-  const yourTokenBalance = useContractReader(readContracts, "YourToken", "balanceOf", [address]);
-  console.log("🏵 yourTokenBalance:", yourTokenBalance ? ethers.utils.formatEther(yourTokenBalance) : "...");
-
-  const tokensPerEth = useContractReader(readContracts, "Vendor", "tokensPerEth");
-  console.log("🏦 tokensPerEth:", tokensPerEth ? tokensPerEth.toString() : "...");
-
-  // const complete = useContractReader(readContracts,"ExampleExternalContract", "completed")
-  // console.log("✅ complete:",complete)
-  //
-  // const exampleExternalContractBalance = useBalance(localProvider, readContracts && readContracts.ExampleExternalContract.address);
-  // if(DEBUG) console.log("💵 exampleExternalContractBalance", exampleExternalContractBalance )
-
-  // let completeDisplay = ""
-  // if(false){
-  //   completeDisplay = (
-  //     <div style={{padding:64, backgroundColor:"#eeffef", fontWeight:"bolder"}}>
-  //       🚀 🎖 👩‍🚀  -  Staking App triggered `ExampleExternalContract` -- 🎉  🍾   🎊
-  //       <Balance
-  //         balance={0}
-  //         fontSize={64}
-  //       /> ETH staked!
-  //     </div>
-  //   )
-  // }
-
-  /*
-  const addressFromENS = useResolveName(mainnetProvider, "austingriffith.eth");
-  console.log("🏷 Resolved austingriffith.eth as:",addressFromENS)
-  */
 
   //
   // 🧫 DEBUG 👨🏻‍🔬
@@ -308,29 +279,24 @@ function App(props) {
       address &&
       selectedChainId &&
       yourLocalBalance &&
-      yourMainnetBalance &&
       readContracts &&
       writeContracts &&
       mainnetContracts
     ) {
-      console.log("_____________________________________ 🏗 scaffold-eth _____________________________________");
+      console.log("_____________________________________ 🏗 Trustor Digital _____________________________________");
       console.log("🌎 mainnetProvider", mainnetProvider);
       console.log("🏠 localChainId", localChainId);
       console.log("👩‍💼 selected address:", address);
       console.log("🕵🏻‍♂️ selectedChainId:", selectedChainId);
-      console.log("💵 yourLocalBalance", yourLocalBalance ? ethers.utils.formatEther(yourLocalBalance) : "...");
-      console.log("💵 yourMainnetBalance", yourMainnetBalance ? ethers.utils.formatEther(yourMainnetBalance) : "...");
       console.log("📝 readContracts", readContracts);
-      console.log("🌍 DAI contract on mainnet:", mainnetContracts);
-      console.log("💵 yourMainnetDAIBalance", myMainnetDAIBalance);
       console.log("🔐 writeContracts", writeContracts);
+      console.log("SIMPLET: ", readContracts.SimpleT);
     }
   }, [
     mainnetProvider,
     address,
     selectedChainId,
     yourLocalBalance,
-    yourMainnetBalance,
     readContracts,
     writeContracts,
     mainnetContracts,
@@ -483,375 +449,307 @@ function App(props) {
     );
   }
 
-  const buyTokensEvents = useEventListener(readContracts, "Vendor", "BuyTokens", localProvider, 1);
-  console.log("📟 buyTokensEvents:", buyTokensEvents);
-
-  const [tokenBuyAmount, setTokenBuyAmount] = useState({
-    valid: false,
-    value: ''
-  });
-  const [tokenSellAmount, setTokenSellAmount] = useState({
-    valid: false,
-    value: ''
-  });
-  const [isSellAmountApproved, setIsSellAmountApproved] = useState();
-
-  useEffect(()=>{
-    console.log("tokenSellAmount",tokenSellAmount.value)
-    const tokenSellAmountBN = tokenSellAmount.valid ? ethers.utils.parseEther("" + tokenSellAmount.value) : 0;
-    console.log("tokenSellAmountBN",tokenSellAmountBN)
-    setIsSellAmountApproved(vendorApproval && tokenSellAmount.value && vendorApproval.gte(tokenSellAmountBN))
-  },[tokenSellAmount, readContracts])
-  console.log("isSellAmountApproved",isSellAmountApproved)
-
-  const ethCostToPurchaseTokens =
-    tokenBuyAmount.valid && tokensPerEth && ethers.utils.parseEther("" + tokenBuyAmount.value / parseFloat(tokensPerEth));
-  console.log("ethCostToPurchaseTokens:", ethCostToPurchaseTokens);
-
-  const ethValueToSellTokens =
-    tokenSellAmount.valid && tokensPerEth && ethers.utils.parseEther("" + tokenSellAmount.value / parseFloat(tokensPerEth));
-  console.log("ethValueToSellTokens:", ethValueToSellTokens);
 
   const [tokenSendToAddress, setTokenSendToAddress] = useState();
   const [tokenSendAmount, setTokenSendAmount] = useState();
 
-  const [buying, setBuying] = useState();
-
-  let transferDisplay = "";
-  if (yourTokenBalance) {
-    transferDisplay = (
-      <div style={{ padding: 8, marginTop: 32, width: 420, margin: "auto" }}>
-        <Card title="Transfer tokens">
-          <div>
-            <div style={{ padding: 8 }}>
-              <AddressInput
-                ensProvider={mainnetProvider}
-                placeholder="to address"
-                value={tokenSendToAddress}
-                onChange={setTokenSendToAddress}
-              />
-            </div>
-            <div style={{ padding: 8 }}>
-              <Input
-                style={{ textAlign: "center" }}
-                placeholder={"amount of tokens to send"}
-                value={tokenSendAmount}
-                onChange={e => {
-                  setTokenSendAmount(e.target.value);
-                }}
-              />
-            </div>
-          </div>
-          <div style={{ padding: 8 }}>
-            <Button
-              type={"primary"}
-              onClick={() => {
-                tx(
-                  writeContracts.YourToken.transfer(tokenSendToAddress, ethers.utils.parseEther("" + tokenSendAmount)),
-                );
-              }}
-            >
-              Send Tokens
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  const [collapsed, setCollapsed] = useState(false);
+  const [newGrantorAddr, setNewGrantorAddr] = useState();
+  const [newAddress, setNewAddress] = useState();
+  const [newTrusteeAddr, setNewTrusteeAddr] = useState();
+  const [releaseAssets, setReleaseAssets] = useState();
+  
 
   return (
     <div className="App">
-      {/* ✏️ Edit the header and change the title to your project name */}
-      <Header />
-      {networkDisplay}
       <BrowserRouter>
-        <Menu style={{ textAlign: "center" }} selectedKeys={[route]} mode="horizontal">
-          <Menu.Item key="/">
-            <Link
-              onClick={() => {
-                setRoute("/");
-              }}
-              to="/"
-            >
-              SimpleTrust
-            </Link>
-          </Menu.Item>
-          <Menu.Item key="/contracts">
-            <Link
-              onClick={() => {
-                setRoute("/contracts");
-              }}
-              to="/contracts"
-            >
-              Debug Contracts
-            </Link>
-          </Menu.Item>
-        </Menu>
+        <Layout style={{ minHeight: '100vh', }}>
+          <Sider collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)}>
+            <img src={logo} className="logo" />
+            <SideBar />
+          </Sider>
+          <Layout className="site-layout">
+            <LocalHeader />
+            <Content style={{padding: '0 50px',}}>
+              <div className="site-layout-content">
+                <Switch>
+                  <Route path="/" exact>
+                    <img src={background} style={{ padding: 25, marginTop: 50,  height: 600,}} />
+                  </Route>
+                  <Route exact path="/Overview">
+                  <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                  <h1> GRANTORS </h1>
+                    <GrantorTable readContracts={readContracts} />
+                  <h1> TRUSTEES </h1>
+                    <TrusteeTable readContracts={readContracts} />
+                  <h1> BENEFICIARIES </h1>
+                    <BeneficiaryTable readContracts={readContracts} />
+                    
+                  </Route>
+                  <Route exact path="/grantor/overview"> 
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <h1> GRANTORS </h1>
+                      <GrantorTable readContracts={readContracts} />
+                  </Route>
+                  <Route exact path="/grantor/admin">
+                  <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                  <GrantorTable readContracts={readContracts} />
+                  <Divider orientation="left">Modify Grantor Actions</Divider>
+                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
+                    
+                      <Card title="Add Grantor" >                
+                        <div className="site-input-group-wrapper">
+                          <Input.Group compact>
+                            <Input
+                              style={{width: "calc(100% - 80px)" }}
+                              onChange={e => {setNewGrantorAddr(e.target.value)}}
+                              placeholder="Grantor address"
+                            />
+                            <Button
+                              type={"primary"}
+                              onClick={async () => {tx(writeContracts.SimpleT.addGrantor(newGrantorAddr), )}}  
+                            >
+                              Add
+                            </Button>
+                          </Input.Group>
+                        </div>
+                      </Card>
+                    </div>
+                    <Divider orientation="left">Modify Trustee Actions</Divider>
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <TrusteeTable readContracts={readContracts} />
+                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
+                    
+                      <Card title="Add Trustee" extra={<a href="#">code</a>}>                
+                        <div className="site-input-group-wrapper">
+                          <Input.Group compact>
+                            <Input
+                              style={{
+                                width: "calc(100% - 80px)"
+                              }}
+                              onChange={e => {
+                                setNewAddress(e.target.value);
+                              }}
+                              placeholder="Grantor address"
+                            />
+                            <Button
+                              type={"primary"}
+                              onClick={async () => {tx(writeContracts.SimpleT.addTrustee(newAddress), )}}  
+                            >
+                              Add
+                            </Button>
+                          </Input.Group>
+                        </div>
+                      </Card>
+                    </div>
+                    <Divider orientation="left">Modify Beneficiary Actions</Divider>
 
-        <Switch>
-          <Route exact path="/">
-            <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
-              <Card title="Your Tokens" extra={<a href="#">code</a>}>
-                <div style={{ padding: 8 }}>
-                  <Balance balance={yourTokenBalance} fontSize={64} />
-                </div>
-              </Card>
-            </div>
-            {transferDisplay}
-            <Divider />
-            <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
-              <Card title="Buy Tokens" extra={<a href="#">code</a>}>
-                <div style={{ padding: 8 }}>{tokensPerEth && tokensPerEth.toNumber()} tokens per ETH</div>
-                <div style={{ padding: 8 }}>
-                  <Input
-                    style={{ textAlign: "center" }}
-                    placeholder={"amount of tokens to buy"}
-                    value={tokenBuyAmount.value}
-                    onChange={e => {
-                      const newValue = e.target.value.startsWith(".") ? "0." : e.target.value;
-                      const buyAmount = {
-                        value: newValue,
-                        valid: /^\d*\.?\d+$/.test(newValue)
-                      }
-                      setTokenBuyAmount(buyAmount);
-                    }}
-                  />
-                  <Balance balance={ethCostToPurchaseTokens} dollarMultiplier={price} />
-                </div>
+                  </Route>
+                  <Route exact path="/trustee/overview">
+                  <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                  <h1> Trustees </h1>
+                    <TrusteeTable readContracts={readContracts} />
+                  </Route>
 
-                <div style={{ padding: 8 }}>
-                  <Button
-                    type={"primary"}
-                    loading={buying}
-                    onClick={async () => {
-                      setBuying(true);
-                      await tx(writeContracts.Vendor.buyTokens({ value: ethCostToPurchaseTokens }));
-                      setBuying(false);
-                    }}
-                    disabled={!tokenBuyAmount.valid}
-                  >
-                    Buy Tokens
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          
-            
-            
-            {/*Extra UI for buying the tokens back from the user using "approve" and "sellTokens"
+                  
+                  <Route exact path="/trustee/administer">
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <Card title="Release Assets to Beneficiaries" extra={<a href="#">code</a>}>                
+                        <div className="site-input-group-wrapper">
+                          <Button
+                            type={"primary"}
+                            onClick={
+                              async (tx, writeContracts) => {
+                              ReleaseAssets(tx, writeContracts) }
+                            } 
+                            // disabled={!tokenSellAmount.valid} IsGrantor && Active=False
+                            >
+                            Release
+                          </Button>  
+                        </div>
+                      </Card>
+                    
+                  </Route>
 
-            <Divider />
-            <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
-              <Card title="Sell Tokens">
-                <div style={{ padding: 8 }}>{tokensPerEth && tokensPerEth.toNumber()} tokens per ETH</div>
-
-                <div style={{ padding: 8 }}>
-                  <Input
-                    style={{ textAlign: "center" }}
-                    placeholder={"amount of tokens to sell"}
-                    value={tokenSellAmount.value}
-                    onChange={e => {
-                      const newValue = e.target.value.startsWith(".") ? "0." : e.target.value;
-                      const sellAmount = {
-                        value: newValue,
-                        valid: /^\d*\.?\d+$/.test(newValue)
-                      }
-                      setTokenSellAmount(sellAmount);
-                    }}
-                  />
-                  <Balance balance={ethValueToSellTokens} dollarMultiplier={price} />
-                </div>
-                {isSellAmountApproved?
-
-                  <div style={{ padding: 8 }}>
-                    <Button
-                      disabled={true}
-                      type={"primary"}
-                    >
-                      Approve Tokens
-                    </Button>
-                    <Button
-                      type={"primary"}
-                      loading={buying}
-                      onClick={async () => {
-                        setBuying(true);
-                        await tx(writeContracts.Vendor.sellTokens(tokenSellAmount.valid && ethers.utils.parseEther(tokenSellAmount.value)));
-                        setBuying(false);
-                        setTokenSellAmount("");
-                      }}
-                      disabled={!tokenSellAmount.valid}
-                    >
-                      Sell Tokens
-                    </Button>
-                  </div>
-                  :
-                  <div style={{ padding: 8 }}>
-                    <Button
-                      type={"primary"}
-                      loading={buying}
-                      onClick={async () => {
-                        setBuying(true);
-                        await tx(writeContracts.YourToken.approve(readContracts.Vendor.address, tokenSellAmount.valid && ethers.utils.parseEther(tokenSellAmount.value)));
-                        setBuying(false);
-                        let resetAmount = tokenSellAmount
-                        setTokenSellAmount("");
-                        setTimeout(()=>{
-                          setTokenSellAmount(resetAmount)
-                        },1500)
-                      }}
-                      disabled={!tokenSellAmount.valid}
-                      >
-                      Approve Tokens
-                    </Button>
-                    <Button
-                      disabled={true}
-                      type={"primary"}
-                    >
-                      Sell Tokens
-                    </Button>
-                  </div>
-                    }
+                  <Route exact path="/grantor/approve"> 
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <h1> GRANTORS </h1>
+                      <GrantorTable readContracts={readContracts} />
 
 
-              </Card>
-            </div>
-            */}
-            <div style={{ padding: 8, marginTop: 32 }}>
-              <div>Vendor Token Balance:</div>
-              <Balance balance={vendorTokenBalance} fontSize={64} />
-            </div>
+                      <Card title="Release right, title, and Interest" extra={<a href="#">code</a>}>                
+                        <div className="site-input-group-wrapper">
+                          <Button
+                            type={"primary"}
+                            onClick={async () => {
+                              const result = tx(writeContracts.SimpleT.assignAssetsToTrust(), update => {
+                                console.log("📡 Transaction Update:", update);
+                                if (update && (update.status === "confirmed" || update.status === 1)) {
+                                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                                  console.log(
+                                    " ⛽️ " +
+                                      update.gasUsed +
+                                      "/" +
+                                      (update.gasLimit || update.gas) +
+                                      " @ " +
+                                      parseFloat(update.gasPrice) / 1000000000 +
+                                      " gwei",
+                                  );
+                                }
+                              });
+                              console.log("awaiting metamask/web3 confirm result...", result);
+                              console.log(await result);
+                            }} 
+                            // disabled={!tokenSellAmount.valid} IsGrantor && Active=False
+                            >
+                            Assign Assets To Trust
+                          </Button>  
+                        </div>
+                      </Card>
 
-            <div style={{ padding: 8 }}>
-              <div>Vendor ETH Balance:</div>
-              <Balance balance={vendorETHBalance} fontSize={64} /> ETH
-            </div>
 
-            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
-              <div>Buy Token Events:</div>
-              <List
-                dataSource={buyTokensEvents}
-                renderItem={item => {
-                  return (
-                    <List.Item key={item.blockNumber + item.blockHash}>
-                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> paid
-                      <Balance balance={item.args[1]} />
-                      ETH to get
-                      <Balance balance={item.args[2]} />
-                      Tokens
-                    </List.Item>
-                  );
-                }}
-              />
-            </div>
+                  </Route>
 
-            {/*
 
-                🎛 this scaffolding is full of commonly used components
-                this <Contract/> component will automatically parse your ABI
-                and give you a form to interact with it locally
 
-            <Contract
-              name="YourContract"
-              signer={userSigner}
-              provider={localProvider}
-              address={address}
-              blockExplorer={blockExplorer}
-              contractConfig={contractConfig}
-            />
-            */}
-          </Route>
-          <Route path="/contracts">
-            <Contract
-              name="SimpleT"
-              signer={userSigner}
-              provider={localProvider}
-              address={address}
-              blockExplorer={blockExplorer}
-              contractConfig={contractConfig}
-            />
-            <Contract
-              name="USDC"
-              signer={userSigner}
-              provider={localProvider}
-              address={address}
-              blockExplorer={blockExplorer}
-              contractConfig={contractConfig}
-            />
-          </Route>
-        </Switch>
+                  <Route exact path="/simple-trust">
+                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    <GrantorTable readContracts={readContracts} />
+                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
+                      <Card title="Add Grantor" >                
+                        <div className="site-input-group-wrapper">
+                          <Input.Group compact>
+                            <Input
+                              style={{
+                                width: "calc(100% - 80px)"
+                              }}
+                              onChange={e => {
+                                setNewGrantorAddr(e.target.value);
+                              }}
+                              placeholder="Grantor address"
+                            />
+                            <Button
+                              type={"primary"}        
+                              // onClick={
+                              //   (tx, writeContracts, newGrantorAddr) => {
+                              //     AddGrantor(tx, writeContracts, newGrantorAddr) }
+                              //   } 
+                              onClick={async () => {
+                                const result = tx(writeContracts.SimpleT.addGrantor(newGrantorAddr), update => {
+                                  console.log("📡 Transaction Update:", update);
+                                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                                    console.log(" 🍾 Transaction " + update.hash + " finished!");
+                                    console.log(
+                                      " ⛽️ " +
+                                        update.gasUsed +
+                                        "/" +
+                                        (update.gasLimit || update.gas) +
+                                        " @ " +
+                                        parseFloat(update.gasPrice) / 1000000000 +
+                                        " gwei",
+                                    );
+                                  }
+                                });
+                                console.log("awaiting metamask/web3 confirm result...", result);
+                                console.log(await result);;
+                              }
+                            }                 
+                              >
+                              Add
+                            </Button>
+                          </Input.Group>
+                        </div>
+                        <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }} />
+                        <Button
+                          type={"primary"}
+                          onClick={async () => {
+                            const result = tx(writeContracts.SimpleT.assignAssetsToTrust(), update => {
+                              console.log("📡 Transaction Update:", update);
+                              if (update && (update.status === "confirmed" || update.status === 1)) {
+                                console.log(" 🍾 Transaction " + update.hash + " finished!");
+                                console.log(
+                                  " ⛽️ " +
+                                    update.gasUsed +
+                                    "/" +
+                                    (update.gasLimit || update.gas) +
+                                    " @ " +
+                                    parseFloat(update.gasPrice) / 1000000000 +
+                                    " gwei",
+                                );
+                              }
+                            });
+                            console.log("awaiting metamask/web3 confirm result...", result);
+                            console.log(await result);
+                          }} 
+                          // disabled={!tokenSellAmount.valid} IsGrantor && Active=False
+                          >
+                          Assign Assets To Trust
+                        </Button>  
+                      </Card>
+                    </div>
+                  </Route>
+                  
+                  <Route path="/contracts">
+                    <Contract
+                      name="SimpleT"
+                      signer={userSigner}
+                      provider={localProvider}
+                      address={address}
+                      blockExplorer={blockExplorer}
+                      contractConfig={contractConfig}
+                    />
+                    <div style={{ position: "fixed", textAlign: "left", left: 0, bottom: 20, padding: 10 }}>
+                      <Row align="middle" gutter={[3, 3]}>
+                        <Col span={12}>
+                          <Ramp price={price} address={address} networks={NETWORKS} />
+                        </Col>
+
+                        <Col span={12} style={{ textAlign: "center", opacity: 0.8 }}>
+                          <GasGauge gasPrice={gasPrice} />
+                        </Col>
+                      </Row>
+
+                      <Row align="middle" gutter={[4, 4]}>
+                        <Col span={24}>
+                          {
+                            faucetAvailable ? (
+                              <Faucet localProvider={localProvider} price={price} ensProvider={mainnetProvider} />
+                            ) : (
+                              ""
+                            )
+                          }
+                        </Col>
+                      </Row>
+                    </div>
+                  </Route>
+                </Switch>
+              </div>
+            </Content>
+            <Footer style={{textAlign: 'center',}}>
+              Trustor Digital ©2022
+            </Footer>
+            <div style={{ position: "fixed", zIndex: 2, textAlign: "right", right: 0, top: 0, padding: 10 }}>
+                <Account
+                  address={address}
+                  localProvider={localProvider}
+                  userSigner={userSigner}
+                  mainnetProvider={mainnetProvider}
+                  price={price}
+                  web3Modal={web3Modal}
+                  loadWeb3Modal={loadWeb3Modal}
+                  logoutOfWeb3Modal={logoutOfWeb3Modal}
+                  blockExplorer={blockExplorer}
+                />
+                {faucetHint}
+              </div>
+          </Layout>
+        </Layout>
       </BrowserRouter>
+    
 
-      <ThemeSwitch />
 
-      {/* 👨‍💼 Your account is in the top right with a wallet at connect options */}
-      <div style={{ position: "fixed", textAlign: "right", right: 0, top: 0, padding: 10 }}>
-        <Account
-          address={address}
-          localProvider={localProvider}
-          userSigner={userSigner}
-          mainnetProvider={mainnetProvider}
-          price={price}
-          web3Modal={web3Modal}
-          loadWeb3Modal={loadWeb3Modal}
-          logoutOfWeb3Modal={logoutOfWeb3Modal}
-          blockExplorer={blockExplorer}
-        />
-        {faucetHint}
-      </div>
+      {/* {networkDisplay} */}
 
-      <div style={{ marginTop: 32, opacity: 0.5 }}>
-        Created by <Address value={"Your...address"} ensProvider={mainnetProvider} fontSize={16} />
-      </div>
-
-      <div style={{ marginTop: 32, paddingBottom: 128, opacity: 0.5 }}>
-        <a
-          target="_blank"
-          style={{ padding: 32, color: "#000" }}
-          href="https://github.com/austintgriffith/scaffold-eth"
-        >
-          🍴 Fork me!
-        </a>
-      </div>
-
-      {/* 🗺 Extra UI like gas price, eth price, faucet, and support: */}
-      <div style={{ position: "fixed", textAlign: "left", left: 0, bottom: 20, padding: 10 }}>
-        <Row align="middle" gutter={[4, 4]}>
-          <Col span={8}>
-            <Ramp price={price} address={address} networks={NETWORKS} />
-          </Col>
-
-          <Col span={8} style={{ textAlign: "center", opacity: 0.8 }}>
-            <GasGauge gasPrice={gasPrice} />
-          </Col>
-          <Col span={8} style={{ textAlign: "center", opacity: 1 }}>
-            <Button
-              onClick={() => {
-                window.open("https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA");
-              }}
-              size="large"
-              shape="round"
-            >
-              <span style={{ marginRight: 8 }} role="img" aria-label="support">
-                💬
-              </span>
-              Support
-            </Button>
-          </Col>
-        </Row>
-
-        <Row align="middle" gutter={[4, 4]}>
-          <Col span={24}>
-            {
-              /*  if the local provider has a signer, let's show the faucet:  */
-              faucetAvailable ? (
-                <Faucet localProvider={localProvider} price={price} ensProvider={mainnetProvider} />
-              ) : (
-                ""
-              )
-            }
-          </Col>
-        </Row>
-      </div>
     </div>
   );
 }
