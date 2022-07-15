@@ -2,27 +2,11 @@ pragma solidity 0.8.14;
 // SPDX-License-Identifier: MIT
 
 import "./Roles.sol";
-// import "@openzeppelin/contracts/access/AccessControl.sol";
-
 
 /// @title Simple T
 /// @author sters.eth
-/// @notice Contract will allow for simple asset transfers
-/// PascalCase for Struct and event names 
-/// camelCase for function, modifier and variable name
-// Part 1: Define custom data, like enums and structs
-// Part 2: Define fixed-size (scalar) data, like uint, 
-// Part 3: Define dynamic-size (non-scalar) data, like mappings and arrays
-// Part 4: Define events
-// Part 5: Define public & external functions. External consumers can quickly find out your smart contract "API" here.
-// Part 6: Define internal & private functions
-// Part 7: Define modifiers
+/// @notice Contract conntains Trustee functions
 abstract contract Trustee is Roles {   
-    // /// @dev GRANTOR_ROLE Controls trust while checkin is live
-    // bytes32 public constant GRANTOR_ROLE = keccak256("GRANTOR_ROLE");
-
-    // /// @dev TRUSTEE_ROLE may execute the trust
-    // bytes32 public constant TRUSTEE_ROLE = keccak256("TRUSTEE_ROLE");
 
     /// @dev Array of trustees
     address[] public trustees;
@@ -35,7 +19,7 @@ abstract contract Trustee is Roles {
     * @dev Owner may add addresses as Trustees.
     * @param trusteeAddress address of trustee.
     */  
-    function addTrustee(address trusteeAddress) external onlyRole(GRANTOR_ROLE) {
+    function addTrustee(address trusteeAddress) public onlyRole(GRANTOR_ROLE) {
         require(trusteeAddress != address(0), 'address can not be zero address');
         trustees.push(trusteeAddress);
         emit AddedTrustee(msg.sender, trusteeAddress);
@@ -44,6 +28,12 @@ abstract contract Trustee is Roles {
    
     /**
     * @dev Owner may remove an address from Trustees.
+    * [2.1.5] A Successor Trustee that has been removed must be replaced within 30 days of removal
+    * by an Independent Trustee who qualifies as such under Section 672(c) of the Internal 
+    * Revenue Code of the United States.
+    * [2.1.6] Notice of Successor Trustee removal and subsequent replacement by an Independent Trustee 
+    * must be in writing, published along with this trust in the form of an amendment, and must 
+    * state the date of removal.
     * @param trusteeAddress address of trustee.
     */  
     function removeTrustee(address trusteeAddress) external onlyRole(GRANTOR_ROLE) {
@@ -73,4 +63,15 @@ abstract contract Trustee is Roles {
         emit ResetTrustees(msg.sender);
     }
 
+    /// @dev returns array of addresses with active stakers
+    function getTrustee() external view returns (address[] memory) {
+        return trustees;
+    }
+
+    /** 
+    * [3.5] If a beneficiary predeceases the Grantor, the beneficiary’s 
+    *  share shall be distributed [pro rata to the other beneficiaries 
+    *  designated in this trust; or per stirpes/per capita to the 
+    *  descendants of the beneficiary.
+    */
 }

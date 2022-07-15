@@ -3,94 +3,94 @@ pragma solidity 0.8.14;
 
 import "./Roles.sol";
 
-
 /// @title Simple T
 /// @author sters.eth
-/// @notice Contract will allow for simple asset transfers
-/// PascalCase for Struct and event names 
-/// camelCase for function, modifier and variable name
-// Part 1: Define custom data, like enums and structs
-// Part 2: Define fixed-size (scalar) data, like uint, 
-// Part 3: Define dynamic-size (non-scalar) data, like mappings and arrays
-// Part 4: Define events
-// Part 5: Define public & external functions. External consumers can quickly find out your smart contract "API" here.
-// Part 6: Define internal & private functions
-// Part 7: Define modifiers
+/// @notice Contract will has functions for Beneficiaries
 abstract contract Beneficiary is Roles {
+    event BeneficiaryAdded(address account, uint256 shares);
+    event AssetsReleased(address to, uint256 amount);
+    event AssetsReceived(address from, uint256 amount);
+        
+    uint256 private _totalShares;
 
-    /// @dev Array of beneficiaries
+    mapping(address => uint256) public _shares;
+    mapping(address => uint256) private _released;
     address[] public beneficiaries;
 
-    /// @dev bene addresses are mapped to the % of assets they are to recieve
-    mapping(address => uint256) public BeneficiaryPercentages;
+    /// @dev returns array of addresses with beneficiaries
+    function getBeneficiaries() external view returns (address[] memory) {
+        return beneficiaries;
+    }
 
-    event UpdatedBeneficiaries(address owner, address[] beneficiaries, uint256[] _percentages);
+    /// @dev returns array of addresses with beneficiaries shares
+    function getShares() external view returns (uint256) {
+        return _shares[msg.sender];
+    }
 
-    
+    /// @dev returns array of addresses with beneficiaries shares
+    function getAddressShares(address _addr) external view returns (uint256) {
+        return _shares[_addr];
+    }
+
+
     /**
-    * @dev Owner may set beneficiary addresses as Trustees. This
-    * function will overwrite previous beneficiaries bc changing only 1 
-    * beneficiary will require a change in more than 1 beneficiary percentage.
+    * @dev Trustee will finalize beneficiary addresses.
     * @param _beneficiaries ordered array addresses of the beneficiary.
-    * @param _percentages ordered array of percentages associated with the beneficiary.
+    * @param shares_ ordered array of shares associated with the beneficiary.
     */  
-    function setBeneficiaries(
+    function setBeneficiaries(        
         address[] memory  _beneficiaries, 
-        uint256[] memory _percentages) 
-        public onlyRole(GRANTOR_ROLE)
-    {
-        // require(
-        //     block.timestamp-initializedFarmsTime >= secondsIn48hours,
-        //     "Time Locked: Must wait 48 hours after last Farm initialization"
-        // );    
+        uint256[] memory shares_) 
+        public onlyRole(GRANTOR_ADMIN_ROLE)
+     {
+        // require(checkin is open);    
         
         require(
-            _beneficiaries.length >= 1,
-            "At least 1 beneficiary must be specified."
+            _beneficiaries.length > 0,
+            "Beneficiary: At least 1 beneficiary must be specified."
         );
 
         require(
-            _beneficiaries.length == _percentages.length,
-            "Must specify the same number of beneficiaries and percentages."
-        );
-                
-        uint256 totalPercent=0;
-        totalPercent=calculateTotalPercent(_percentages);
-        require(totalPercent==100, "Total Percent must be 100");
+            _beneficiaries.length == shares_.length,
+            "Beneficiary: Must specify the same number of beneficiaries and shares."
+        );   
+        
+        _resetBeneficiaries();
 
-        beneficiaries = _beneficiaries;
-
-        for (
-            uint256 idx = 0;
-            idx < beneficiaries.length;
-            idx++
-        ) {
-            address addr = beneficiaries[idx];
-            require(addr != address(0), 'address can not be zero address');
-            BeneficiaryPercentages[addr]=_percentages[idx];
+        for (uint256 i = 0; i < _beneficiaries.length; i++) {
+            _addBeneficiary(_beneficiaries[i], shares_[i]);
         }
-
-        emit UpdatedBeneficiaries(msg.sender, beneficiaries, _percentages);    
     }
 
-    /// @dev Owner may calculate the the total percent from all initialized farms
-    function calculateTotalPercent(
-        uint256[] memory  _percentages)
-        internal 
-        onlyRole(GRANTOR_ROLE)
-        view 
-        returns (uint256)
-    {
-        uint256 totalPercent = 0;
-        for (
-            uint256 idx = 0;
-            idx < _percentages.length;
-            idx++
-        ) {
-            totalPercent+=_percentages[idx];
-        }
-        return totalPercent;
+
+    /**
+     * @dev Add a new payee to the contract.
+     * @param account The address of the payee to add.
+     * @param shares_ The number of shares owned by the payee.
+     */
+    function _addBeneficiary(address account, uint256 shares_) private {
+        require(account != address(0), "Beneficiary: account is the zero address");
+        require(shares_ > 0, "Beneficiary: shares are 0");
+        require(_shares[account] == 0, "Beneficiary: account already has shares");
+
+        beneficiaries.push(account);
+        grantRole(BENEFICIARY_ROLE, account);
+        _shares[account] = shares_;
+        _totalShares = _totalShares + shares_;
+        emit BeneficiaryAdded(account, shares_);
     }
 
+    /**
+     * @dev Reset the beneficiaries
+     */
+    function _resetBeneficiaries() private {
+        address account;
+        for (uint256 i = 0; i < beneficiaries.length; i++) {
+            account = beneficiaries[i];
+            revokeRole(BENEFICIARY_ROLE, account);
+        }
+        delete beneficiaries;
+        _totalShares = 0;
+    }
 
 }
