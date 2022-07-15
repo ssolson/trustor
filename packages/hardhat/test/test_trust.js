@@ -103,7 +103,7 @@ describe("🚩 🏵 Simple Trust 🤖", () => {
         expect(ttxResult2.status).to.equal(1);
   
         // await simpleT.addGrantor(randAddress);;
-        const grantors = await simpleT.getGrantors();
+        // const grantors = await simpleT.getGrantors();
         // console.log('\t',"Grantors: ", grantors)
     }         
 
@@ -122,79 +122,101 @@ describe("🚩 🏵 Simple Trust 🤖", () => {
   });
 
 
-    describe('Adjust Grantors', () => {
+    // describe('Adjust Grantors', () => {
        
-      it(`Should add a Grantor`, async () => {
-        // Get Current grantors
-        const grantors0 = await simpleT.getGrantors();
-        const length0 = grantors0.length;
+      // it(`Should add a Grantor`, async () => {
+      //   // Get Current grantors
+      //   const grantors0 = await simpleT.getGrantors();
+      //   const length0 = grantors0.length;
 
-        // Create New Grantor to add
-        let randAddress=ethers.Wallet.createRandom().address;
+      //   // Create New Grantor to add
+      //   let randAddress=ethers.Wallet.createRandom().address;
 
-        // Add the new grantor
-        await simpleT.addGrantor(randAddress);;
-        const grantors = await simpleT.getGrantors();
+      //   // Add the new grantor
+      //   await simpleT.addGrantor(randAddress);;
+      //   const grantors = await simpleT.getGrantors();
 
-        // Check Length
-        expect(grantors.length).to.equal(length0+1);
+      //   // Check Length
+      //   expect(grantors.length).to.equal(length0+1);
 
-        // Check Address
-        expect(grantors[grantors.length-1]).to.equal(randAddress);
-      });
+      //   // Check Address
+      //   expect(grantors[grantors.length-1]).to.equal(randAddress);
+      // });
 
 
-      it(`Should remove a Grantor`, async () => {
-        // Get Current grantors
-        const grantors0 = await simpleT.getGrantors();
-        const length0 = grantors0.length;
+      // it(`Should remove a Grantor`, async () => {
+      //   // Get Current grantors
+      //   const grantors0 = await simpleT.getGrantors();
+      //   const length0 = grantors0.length;
 
-        // Create New Grantor to add
-        let randAddress=ethers.Wallet.createRandom().address;
+      //   // Create New Grantor to add
+      //   let randAddress=ethers.Wallet.createRandom().address;
 
-        // Add the new grantor
-        await simpleT.addGrantor(randAddress);;
-        const grantors = await simpleT.getGrantors();
+      //   // Add the new grantor
+      //   await simpleT.addGrantor(randAddress);;
+      //   const grantors = await simpleT.getGrantors();
 
-        // Check Length
-        expect(grantors.length).to.equal(length0+1);
+      //   // Check Length
+      //   expect(grantors.length).to.equal(length0+1);
 
-        // Check Address
-        expect(grantors[grantors.length-1]).to.equal(randAddress);
-      });
-
-    });
-
-    // describe('Execute Trust', () => {
-       
-    //   it(`Approve USDC`, async () => {
-    //     console.log('\t'," 🙄 Approving...")
-    //     const approveTokensResult = await usdcToken.approve(simpleT.address, ethers.utils.parseEther("100"));
-    //     console.log('\t'," 🏷  approveTokens Result: ",approveTokensResult.hash)
-
-    //     console.log('\t'," ⏳ Waiting for confirmation...")
-    //     const atxResult =  await approveTokensResult.wait()
-    //     expect(atxResult.status).to.equal(1);
-    //   });  
-
-    //   it(`Distribute ERC20s`, async () => {
-    //     console.log('\t'," 🙄 Executing...")
-    //     const executeTrustResult = await simpleT.connect(Trustee).executeTrust();
-    //     console.log('\t'," 🏷  Executing Trust Result: ", executeTrustResult.hash)
-
-    //     console.log('\t'," ⏳ Waiting for confirmation...")
-    //     const exTxResult =  await executeTrustResult.wait()
-    //     expect(exTxResult.status).to.equal(1);
-    //   });  
-
-    //   it(`Check Shit`, async () => {
-    //     let randAddress=ethers.Wallet.createRandom().address;
-    //     await simpleT.addGrantor(randAddress);;
-    //     const grantors = await simpleT.getGrantors();
-    //     console.log('\t',"Grantors: ", grantors)
-    //   }); 
+      //   // Check Address
+      //   expect(grantors[grantors.length-1]).to.equal(randAddress);
+      // });
 
     // });
+
+    describe('Execute Trust', () => {
+       
+      // it(`Approve USDC`, async () => {
+      //   console.log('\t'," 🙄 Approving...")
+      //   const approveTokensResult = await usdcToken.approve(simpleT.address, ethers.utils.parseEther("100"));
+      //   console.log('\t'," 🏷  approveTokens Result: ",approveTokensResult.hash)
+
+      //   console.log('\t'," ⏳ Waiting for confirmation...")
+      //   const atxResult =  await approveTokensResult.wait()
+      //   expect(atxResult.status).to.equal(1);
+      // });  
+
+      // it(`Distribute ERC20s`, async () => {
+      //   console.log('\t'," 🙄 Executing...")
+      //   const executeTrustResult = await simpleT.connect(Trustee).executeTrust();
+      //   console.log('\t'," 🏷  Executing Trust Result: ", executeTrustResult.hash)
+
+      //   console.log('\t'," ⏳ Waiting for confirmation...")
+      //   const exTxResult =  await executeTrustResult.wait()
+      //   expect(exTxResult.status).to.equal(1);
+      // });  
+
+      // it(`Check Shit`, async () => {
+      //   let randAddress=ethers.Wallet.createRandom().address;
+      //   await simpleT.addGrantor(randAddress);;
+      //   const grantors = await simpleT.getGrantors();
+      //   console.log('\t',"Grantors: ", grantors)
+      // }); 
+
+      it(`Assing Assets to Trust`, async () => {
+        await simpleT.assignAssetsToTrust();
+        const trustBalance = await simpleT.balanceOf(simpleT.address, 0);
+        expect(trustBalance).to.equal(10000)        
+      }); 
+
+      it(`Release Assets from Trust`, async () => {
+        await simpleT.connect(Trustee).releaseAssets();
+        const assetsReleased = await simpleT.assetsReleased();
+        expect(assetsReleased).to.be.true;
+      }); 
+
+      it(`Beneficiary to claim assets from Trust`, async () => {
+        await simpleT.connect(Grantor).assignAssetsToTrust();
+        await simpleT.connect(Trustee).releaseAssets();
+        await simpleT.connect(Beneficiary1).claim();
+        const trustBalance = await simpleT.balanceOf(simpleT.address, 0);
+        console.log('\t',"Trust Balance: ", trustBalance.toString())
+        const Bene1Balance = await simpleT.balanceOf(Beneficiary1.address, 0);
+        console.log('\t',"Beneficiary1 Balance: ", Bene1Balance.toString())
+      }); 
+
+    });
 
     // setPeriods
     // addGrantor

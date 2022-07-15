@@ -98,16 +98,15 @@ describe('Has Role', () => {
 describe('Only Grantor Role', () => {
   let randAddress=ethers.Wallet.createRandom().address;
   let grantorFuncs = {
-    'checkIn': [null], 
+    // 'checkIn': [null], 
     'setPeriods': [1],
     'addGrantor': [ethers.Wallet.createRandom().address],
-    'resetGrantor': [null],
-    'addERC20ToTrust': [ethers.Wallet.createRandom().address],
+    // 'resetGrantor': [null],
+    // 'addERC20ToTrust': [ethers.Wallet.createRandom().address],
     'addTrustee': [randAddress],
     'removeTrustee': [randAddress],
     'resetTrustees': [null],
     'setBeneficiaries': [[randAddress], [100]],
-
   };
 
   const keys = Object.keys(grantorFuncs);
@@ -132,7 +131,8 @@ describe('Only Grantor Role', () => {
 
   describe('Only Trustee Role', (Percentages) => {      
     let trusteeFuncs = {
-      'executeTrust': [null], 
+      'releaseAssets': [null],
+      // 'executeTrust': [null], 
     };
 
     const keys = Object.keys(trusteeFuncs);
