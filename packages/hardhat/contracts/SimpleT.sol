@@ -4,7 +4,7 @@ pragma solidity 0.8.14;
 import "./Grantor.sol";
 import "./Trustee.sol";
 import "./Beneficiary.sol";
-import "./EnumerableMap.sol";
+// import "./EnumerableMap.sol";
 // import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 // import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
 
@@ -29,11 +29,11 @@ contract SimpleT is  Beneficiary, Trustee, Grantor {
     // TrustStates constant defaultState = TrustStates.Initializing;
     bool public assetsReleased;
 
-    using EnumerableMap for EnumerableMap.AddressToUintMap;       
-    EnumerableMap.AddressToUintMap private grantor;
+    // using EnumerableMap for EnumerableMap.AddressToUintMap;       
+    // EnumerableMap.AddressToUintMap private grantor;
 
-    using EnumerableSet for EnumerableSet.AddressSet;
-    EnumerableSet.AddressSet private uniqueAssets;
+    // using EnumerableSet for EnumerableSet.AddressSet;
+    // EnumerableSet.AddressSet private uniqueAssets;
 
     /// @dev the time trust was initialized
     uint256 public initializedTrust;

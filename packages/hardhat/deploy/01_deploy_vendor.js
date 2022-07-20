@@ -10,15 +10,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   console.log('\t'," 🧑‍🏫 Deployer Address: ", deployer)
 
  
-  // Deploy USDC Token
-   const deployUSDC = await deploy("USDC", {
-    from: deployer,
-    args: [],
-    log: true,
-  });
-  // Get the USDC contract
-  const usdc = await ethers.getContract("USDC", deployer);
-  console.log("USDC: ", usdc.address);
+  // // Deploy USDC Token
+  //  const deployUSDC = await deploy("USDC", {
+  //   from: deployer,
+  //   args: [],
+  //   log: true,
+  // });
+  // // Get the USDC contract
+  // const usdc = await ethers.getContract("USDC", deployer);
+  // console.log("USDC: ", usdc.address);
 
   // Input arguments Scaffold Eth  
   const Grantor = "0x69dA48Df7177bc57639F1015E3B9a00f96f7c1d1";
