@@ -31,7 +31,8 @@ import {
   FieldTimeOutlined,
   MinusCircleOutlined, 
   PlusOutlined,
-  PlusCircleOutlined
+  PlusCircleOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import Authereum from "authereum";
 import {
@@ -68,7 +69,16 @@ import {
   SideBar,
 } from "./components";
 import { AddGrantor, ReleaseAssets } from "./components/ContractFunctions";
-import {AllTrustsPage, FavoritesPage, NewTrustPage} from "./pages";
+import {
+  HomePage, 
+  FavoritesPage,
+  NewTrustPage,
+  TrustOverviewPage,
+  GrantorOverviewPage,
+  GrantorAdminPage,
+  GrantorApprovePage,
+  DebugContractsPage
+} from "./pages";
 import {MainNavigation} from "./components/layout/"
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
@@ -76,12 +86,18 @@ import { Transactor } from "./helpers";
 // contracts
 import externalContracts from "./contracts/external_contracts";
 import deployedContracts from "./contracts/hardhat_contracts.json";
+import { addContract } from "./contracts/modifyContracts";
+
+import NewTrust from './contracts/SimpleT.json';
 
 import './index.css';
 import background from './logo/Trustor.jpg';
 import logo from './logo/Trustor_name_white.png';
 
+// const { ethers } = require("hardhat");
+// const hre = require("hardhat");
 const { ethers } = require("ethers");
+// const { Contract, ethers } = require("ethers");
 
 /// 📡 What chain are your contracts deployed to?
 const targetNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
@@ -187,6 +203,7 @@ const web3Modal = new Web3Modal({
 
 
 
+
 function App(props) {
   const mainnetProvider =
     poktMainnetProvider && poktMainnetProvider._isProvider
@@ -243,7 +260,10 @@ function App(props) {
   // 🏗 scaffold-eth is full of handy hooks like this one to get your balance:
   const yourLocalBalance = useBalance(localProvider, address);
 
-  const contractConfig = { deployedContracts: deployedContracts || {}, externalContracts: externalContracts || {} };
+  const contractConfig = { 
+    deployedContracts: deployedContracts || {}, 
+    externalContracts: externalContracts || {} 
+  };
 
   // Load in your local 📝 contract and read a value from it:
   const readContracts = useContractLoader(localProvider, contractConfig);
@@ -265,22 +285,8 @@ function App(props) {
   const trustETHBalance = useBalance(localProvider, trustAddress);
   if (DEBUG) console.log("💵 trustETHBalance", trustETHBalance ? ethers.utils.formatEther(trustETHBalance) : "...");
 
-  const trustTokenApproval = useContractReader(readContracts, "SimpleT", "isApprovedForAll", [
-    address, trustAddress
-  ]);
-  console.log("🤏 trustTokenApproval",trustTokenApproval)
 
-  const tokensPerGrantor = useContractReader(readContracts, "SimpleT", "tokensPerGrantor");
-  console.log("🏦 tokensPerEth:", tokensPerGrantor ? ethers.utils.formatEther(tokensPerGrantor) : "...");
-
-
-  
-
-
-
-  //
   // 🧫 DEBUG 👨🏻‍🔬
-  //
   useEffect(() => {
     if (
       DEBUG &&
@@ -423,62 +429,8 @@ function App(props) {
     }
   }, [loadWeb3Modal]);
 
-  const [route, setRoute] = useState();
-  useEffect(() => {
-    setRoute(window.location.pathname);
-  }, [setRoute]);
-
-  let faucetHint = "";
-  const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
-
-  const [faucetClicked, setFaucetClicked] = useState(false);
-  if (
-    !faucetClicked &&
-    localProvider &&
-    localProvider._network &&
-    localProvider._network.chainId === 31337 &&
-    yourLocalBalance &&
-    ethers.utils.formatEther(yourLocalBalance) <= 0
-  ) {
-    faucetHint = (
-      <div style={{ padding: 16 }}>
-        <Button
-          type="primary"
-          onClick={() => {
-            faucetTx({
-              to: address,
-              value: ethers.utils.parseEther("1"),
-            });
-            setFaucetClicked(true);
-          }}
-        >
-          💰 Grab funds from the faucet ⛽️
-        </Button>
-      </div>
-    );
-  }
-
-
-  const [tokenSendToAddress, setTokenSendToAddress] = useState();
-  const [tokenSendAmount, setTokenSendAmount] = useState();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [newGrantorAddr, setNewGrantorAddr] = useState();
-  const [newAddress, setNewAddress] = useState();
-  const [newTrusteeAddr, setNewTrusteeAddr] = useState();
-  const [releaseAssets, setReleaseAssets] = useState();
-  
-
-
-
-
-
-  const [form] = Form.useForm();
-
-  const onFinish = (values) => {
-    console.log('Received values of form:', values);
-  };
-
 
 
 
@@ -491,180 +443,49 @@ function App(props) {
             <SideBar />
           </Sider>
           <Layout className="site-layout">
-            <LocalHeader />
+            <LocalHeader
+              address={address}
+              localProvider={localProvider}
+              userSigner={userSigner}
+              mainnetProvider={mainnetProvider}
+              price={price}
+              web3Modal={web3Modal}
+              loadWeb3Modal={loadWeb3Modal}
+              logoutOfWeb3Modal={logoutOfWeb3Modal}
+              blockExplorer={blockExplorer}
+              targetNetwork={targetNetwork}
+              gasPrice={gasPrice}
+              />
+
             <Content style={{padding: '0 50px',}}>
               <div className="site-layout-content">
                 <Switch>
-                  <Route path="/" exact>
-                    <img src={background} style={{ padding: 25, marginTop: 50,  height: 600,}} />
+                  <Route path="/" exact>                    
+                    <HomePage />
+                  </Route>
+                  <Route path="/trust/new" exact>
+                    <NewTrustPage />
                   </Route>
                   <Route exact path="/Overview">
-                  <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                  <h1> GRANTORS </h1>
-                    <GrantorTable readContracts={readContracts} />
-                  <h1> TRUSTEES </h1>
-                    <TrusteeTable readContracts={readContracts} />
-                  <h1> BENEFICIARIES </h1>
-                    <BeneficiaryTable readContracts={readContracts} />
+                    <TrustOverviewPage readContracts={readContracts} />
                   </Route>
                   <Route exact path="/grantor/overview"> 
                     <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <h1> GRANTORS </h1>
-                      <GrantorTable readContracts={readContracts} />
+                    <GrantorOverviewPage readContracts={readContracts} />
                   </Route>
                   <Route exact path="/grantor/admin">
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <GrantorTable readContracts={readContracts} />
-                    <Divider orientation="left">Modify Grantor Actions</Divider>
-                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
-                      <Card title="Add Grantor" >                
-                        <div className="site-input-group-wrapper">
-                          <Input.Group compact>
-                            <Input
-                              style={{width: "calc(100% - 80px)" }}
-                              onChange={e => {setNewGrantorAddr(e.target.value)}}
-                              placeholder="Grantor address"
-                            />
-                            <Button
-                              type={"primary"}
-                              onClick={async () => {tx(writeContracts.SimpleT.addGrantor(newGrantorAddr), )}}  
-                            >
-                              Add
-                            </Button>
-                          </Input.Group>
-                        </div>
-                      </Card>
-                    </div>
-                    <Divider orientation="left">Modify Trustee Actions</Divider>
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <TrusteeTable readContracts={readContracts} />
-                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
-                    
-                      <Card title="Add Trustee" >                
-                        <div className="site-input-group-wrapper">
-                          <Input.Group compact>
-                            <Input
-                              style={{
-                                width: "calc(100% - 80px)"
-                              }}
-                              onChange={e => {
-                                setNewAddress(e.target.value);
-                              }}
-                              placeholder="Grantor address"
-                            />
-                            <Button
-                              type={"primary"}
-                              onClick={async () => {tx(writeContracts.SimpleT.addTrustee(newAddress), )}}  
-                            >
-                              Add
-                            </Button>
-                          </Input.Group>
-                        </div>
-                      </Card>
-                    </div>
-                    
-                    <Divider orientation="left">Modify Beneficiary Actions</Divider>
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <BeneficiaryTable readContracts={readContracts} />
-                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
-                      <Form form={form} 
-                        name="dynamic_form_nest_item" 
-                        onFinish={onFinish} 
-                        autoComplete="off" 
-                        >
-                        <Form.List name="newBeneficiaries">
-                          {(fields, { add, remove }) => (
-                            <>
-                              {fields.map((field) => (
-                                <Space  key={field.key} align="baseline">
-                                {/* <div key={field.key}> */}
-                                  
-                                  <Form.Item
-                                    // {...field}
-                                    label="Beneficiary"
-                                    name={[field.name, 'address']}
-                                    rules={[
-                                      {
-                                        required: true,
-                                        message: 'Missing Beneficiary address',
-                                      },
-                                    ]}
-                                    >
-                                    <Input />
-                                  </Form.Item>
-                                  <Form.Item
-                                    // {...field}
-                                    label="Shares"
-                                    name={[field.name, 'shares']}
-                                    rules={[
-                                      {
-                                        required: true,
-                                        message: 'Missing Shares',
-                                      },
-                                    ]}
-                                    >
-                                    <Input />
-                                  </Form.Item>
-
-                                  <MinusCircleOutlined onClick={() => remove(field.name)} />
-                                
-                                {/* </div> */}
-                                </Space >
-                              ))}
-
-                              <Form.Item>
-                                <Button type="dashed" onClick={() => add()} block icon={<PlusCircleOutlined />}>
-                                  Add Beneficiary
-                                </Button>
-                              </Form.Item>
-                            </>
-                          )}
-                        </Form.List>
-                        <Form.Item>
-                          <Button 
-                            type="primary" 
-                            htmlType="submit"
-                            onClick={async () => {
-                              let vals = form.getFieldValue('newBeneficiaries');
-                              let  addresses = vals.map(element => element.address)
-                              let shares = vals.map(element => element.shares)
-                              
-                              
-                              // console.log('newBeneficiaries', vals);
-                              console.log('addresses', addresses);
-                              console.log('shares', shares);
-                              const result = tx(writeContracts.SimpleT.setBeneficiaries(addresses, shares), )
-                              console.log('result', result);
-
-                            }}
-                            >
-                            Submit
-                          </Button>
-                        </Form.Item>
-                      </Form>
-                    </div>
-
+                    <GrantorAdminPage 
+                      readContracts={readContracts} 
+                      writeContracts={writeContracts}
+                      tx={tx}
+                    />
                   </Route>
-
                   <Route exact path="/grantor/approve"> 
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <h1> GRANTORS </h1>
-                      <GrantorTable readContracts={readContracts} />
-
-
-                      <Card title="Release Right, Title, and Interest" extra={<a href="#">code</a>}>                
-                        <div className="site-input-group-wrapper">
-                          <Button
-                            type={"primary"}
-                            onClick={async () => {
-                              const result = tx(writeContracts.SimpleT.assignAssetsToTrust(), )}
-                            } 
-                            // disabled={!tokenSellAmount.valid} IsGrantor && Active=False
-                            >
-                            Assign Assets To Trust
-                          </Button>  
-                        </div>
-                      </Card>
+                    <GrantorApprovePage 
+                      readContracts={readContracts} 
+                      writeContracts={writeContracts}
+                      tx={tx}
+                    />
                   </Route>
 
                   <Route exact path="/trustee/overview">
@@ -693,119 +514,24 @@ function App(props) {
                     
                   </Route>
 
-
-
-
-
-                  <Route exact path="/simple-trust">
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <GrantorTable readContracts={readContracts} />
-                    <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
-                      <Card title="Add Grantor" >                
-                        <div className="site-input-group-wrapper">
-                          <Input.Group compact>
-                            <Input
-                              style={{
-                                width: "calc(100% - 80px)"
-                              }}
-                              onChange={e => {
-                                setNewGrantorAddr(e.target.value);
-                              }}
-                              placeholder="Grantor address"
-                            />
-                            <Button
-                              type={"primary"}        
-                              // onClick={
-                              //   (tx, writeContracts, newGrantorAddr) => {
-                              //     AddGrantor(tx, writeContracts, newGrantorAddr) }
-                              //   } 
-                              onClick={async () => {
-                                const result = tx(writeContracts.SimpleT.addGrantor(newGrantorAddr), update => {
-                                  console.log("📡 Transaction Update:", update);
-                                  if (update && (update.status === "confirmed" || update.status === 1)) {
-                                    console.log(" 🍾 Transaction " + update.hash + " finished!");
-                                    console.log(
-                                      " ⛽️ " +
-                                        update.gasUsed +
-                                        "/" +
-                                        (update.gasLimit || update.gas) +
-                                        " @ " +
-                                        parseFloat(update.gasPrice) / 1000000000 +
-                                        " gwei",
-                                    );
-                                  }
-                                });
-                                console.log("awaiting metamask/web3 confirm result...", result);
-                                console.log(await result);;
-                              }
-                            }                 
-                              >
-                              Add
-                            </Button>
-                          </Input.Group>
-                        </div>
-                        <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }} />
-                        <Button
-                          type={"primary"}
-                          onClick={async () => {
-                            const result = tx(writeContracts.SimpleT.assignAssetsToTrust(), update => {
-                              console.log("📡 Transaction Update:", update);
-                              if (update && (update.status === "confirmed" || update.status === 1)) {
-                                console.log(" 🍾 Transaction " + update.hash + " finished!");
-                                console.log(
-                                  " ⛽️ " +
-                                    update.gasUsed +
-                                    "/" +
-                                    (update.gasLimit || update.gas) +
-                                    " @ " +
-                                    parseFloat(update.gasPrice) / 1000000000 +
-                                    " gwei",
-                                );
-                              }
-                            });
-                            console.log("awaiting metamask/web3 confirm result...", result);
-                            console.log(await result);
-                          }} 
-                          // disabled={!tokenSellAmount.valid} IsGrantor && Active=False
-                          >
-                          Assign Assets To Trust
-                        </Button>  
-                      </Card>
-                    </div>
-                  </Route>
                   
                   <Route path="/contracts">
-                    <Contract
-                      name="SimpleT"
-                      signer={userSigner}
-                      provider={localProvider}
+                    <DebugContractsPage
                       address={address}
+                      localProvider={localProvider}
+                      userSigner={userSigner}
+                      mainnetProvider={mainnetProvider}
+                      price={price}
+                      web3Modal={web3Modal}
+                      loadWeb3Modal={loadWeb3Modal}
+                      logoutOfWeb3Modal={logoutOfWeb3Modal}
                       blockExplorer={blockExplorer}
+                      targetNetwork={targetNetwork}
+                      gasPrice={gasPrice}
+                      NETWORKS={NETWORKS}
                       contractConfig={contractConfig}
+
                     />
-                    <div style={{ position: "fixed", textAlign: "left", left: 0, bottom: 20, padding: 10 }}>
-                      <Row align="middle" gutter={[3, 3]}>
-                        <Col span={12}>
-                          <Ramp price={price} address={address} networks={NETWORKS} />
-                        </Col>
-
-                        <Col span={12} style={{ textAlign: "center", opacity: 0.8 }}>
-                          <GasGauge gasPrice={gasPrice} />
-                        </Col>
-                      </Row>
-
-                      <Row align="middle" gutter={[4, 4]}>
-                        <Col span={24}>
-                          {
-                            faucetAvailable ? (
-                              <Faucet localProvider={localProvider} price={price} ensProvider={mainnetProvider} />
-                            ) : (
-                              ""
-                            )
-                          }
-                        </Col>
-                      </Row>
-                    </div>
                   </Route>
                 </Switch>
               </div>
@@ -813,28 +539,10 @@ function App(props) {
             <Footer style={{textAlign: 'center',}}>
               Trustor Digital ©2022
             </Footer>
-            <div style={{ position: "fixed", zIndex: 2, textAlign: "right", right: 0, top: 0, padding: 10 }}>
-                <Account
-                  address={address}
-                  localProvider={localProvider}
-                  userSigner={userSigner}
-                  mainnetProvider={mainnetProvider}
-                  price={price}
-                  web3Modal={web3Modal}
-                  loadWeb3Modal={loadWeb3Modal}
-                  logoutOfWeb3Modal={logoutOfWeb3Modal}
-                  blockExplorer={blockExplorer}
-                />
-                {faucetHint}
-              </div>
+
           </Layout>
         </Layout>
       </BrowserRouter>
-    
-
-
-      {/* {networkDisplay} */}
-
     </div>
   );
 }

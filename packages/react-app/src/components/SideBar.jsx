@@ -11,7 +11,12 @@ import {
   TeamOutlined,
   FieldTimeOutlined,
   RobotFilled,
-  RobotOutlined
+  RobotOutlined,
+  HomeOutlined,
+  DiffOutlined,
+  FormOutlined,
+  OrderedListOutlined,
+  CopyOutlined,
 } from '@ant-design/icons';
 
 
@@ -22,7 +27,20 @@ const items = [
 export default function SideBar() {
   return (
     <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline">
-      <Menu.Item key="/" icon={<FileOutlined/>} >
+      <Menu.Item key="/" icon={<HomeOutlined/>}>
+        <Link to="/">Home</Link>
+      </Menu.Item>
+      
+      <Menu.SubMenu title="Trust"  key="0" icon={<DiffOutlined/>}>
+      <Menu.Item key="/trust/new" icon={<FormOutlined/>}>
+          <Link to="/trust/new">New Trust</Link>
+        </Menu.Item>
+        <Menu.Item key="/trust" icon={<CopyOutlined/>}>
+          <Link to="/trust">Your Trust</Link>
+        </Menu.Item>
+      </Menu.SubMenu>
+
+      <Menu.Item key="/overview" icon={<FileOutlined/>} >
         <Link to="/overview">Overview</Link>
       </Menu.Item>
       <Menu.SubMenu title="Grantor" key="1" icon={<UserOutlined/>}>
@@ -44,7 +62,7 @@ export default function SideBar() {
           <Link to="/trustee/administer">Admin</Link>
         </Menu.Item>
       </Menu.SubMenu>
-      <Menu.SubMenu title="Beneficiaries"  key="3" icon={<RobotFilled/>}>
+      <Menu.SubMenu title="Beneficiaries"  key="3" icon={<OrderedListOutlined/>}>
         <Menu.Item key="/beneficiary/overview">
           <Link to="/beneficiary/overview">Overview</Link>
         </Menu.Item>
@@ -52,6 +70,9 @@ export default function SideBar() {
           <Link to="/beneficiary/claim">Admin</Link>
         </Menu.Item>
       </Menu.SubMenu>
+      <Menu.Item key="/contracts">
+        <Link to="/contracts">Debug Contracts</Link>
+      </Menu.Item>
 
     </Menu>  
   );
