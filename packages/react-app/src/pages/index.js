@@ -7,4 +7,4 @@ export { default as GrantorOverviewPage } from "./GrantorOverviewPage";
 export { default as GrantorAdminPage } from "./GrantorAdminPage";
 export { default as GrantorApprovePage } from "./GrantorApprovePage";
 export { default as DebugContractsPage } from "./DebugContractsPage";
-
+export { default as Trust0xOverviewPage } from "./Trust0xOverviewPage";

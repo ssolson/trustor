@@ -1,3 +1,8 @@
+// const fs = require("fs");
+
+// let fileString = fs.readFileSync("contracts.txt").toString();
+// var obj = JSON.parse(fileString)
+
 const ERC20ABI = [
   {
     constant: true,
@@ -783,6 +788,10 @@ const DAIABI = [
     type: "function",
   },
 ];
+
+
+
+
 
 // Mainnet DAI, Optimism and Arbitrium Rollup Contracts with local addresses
 module.exports = {

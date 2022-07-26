@@ -94,9 +94,7 @@ export default function GrantorAdminPage(props) {
             {(fields, { add, remove }) => (
               <>
                 {fields.map((field) => (
-                  <Space  key={field.key} align="baseline">
-                  
-                    
+                  <Space key={field.key} align="baseline">
                     <Form.Item
                       // {...field}
                       label="Beneficiary"
@@ -123,10 +121,7 @@ export default function GrantorAdminPage(props) {
                       >
                       <Input />
                     </Form.Item>
-
                     <MinusCircleOutlined onClick={() => remove(field.name)} />
-                  
-                  
                   </Space >
                 ))}
 

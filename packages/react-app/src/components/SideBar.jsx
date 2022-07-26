@@ -31,14 +31,14 @@ export default function SideBar() {
         <Link to="/">Home</Link>
       </Menu.Item>
       
-      <Menu.SubMenu title="Trust"  key="0" icon={<DiffOutlined/>}>
-      <Menu.Item key="/trust/new" icon={<FormOutlined/>}>
-          <Link to="/trust/new">New Trust</Link>
+      {/* <Menu.SubMenu title="Trusts"  key="0" icon={<DiffOutlined/>}> */}
+      <Menu.Item key="/your-trusts" icon={<CopyOutlined/>}>
+          <Link to="/your-trusts">Your Trusts</Link>
         </Menu.Item>
-        <Menu.Item key="/trust" icon={<CopyOutlined/>}>
-          <Link to="/trust">Your Trust</Link>
-        </Menu.Item>
-      </Menu.SubMenu>
+      <Menu.Item key="/your-trusts/new" icon={<FormOutlined/>}>
+          <Link to="/your-trusts/new">New Trust</Link>
+      </Menu.Item>
+      {/* </Menu.SubMenu> */}
 
       <Menu.Item key="/overview" icon={<FileOutlined/>} >
         <Link to="/overview">Overview</Link>

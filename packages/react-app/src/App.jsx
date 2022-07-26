@@ -47,7 +47,7 @@ import { useExchangeEthPrice } from "eth-hooks/dapps/dex";
 import { useEventListener } from "eth-hooks/events/useEventListener";
 import Fortmatic from "fortmatic";
 import React, { useCallback, useEffect, useState } from "react";
-import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
+import { BrowserRouter, Link, Routes, Route } from "react-router-dom";
 
 import WalletLink from "walletlink";
 import Web3Modal from "web3modal";
@@ -77,7 +77,9 @@ import {
   GrantorOverviewPage,
   GrantorAdminPage,
   GrantorApprovePage,
-  DebugContractsPage
+  DebugContractsPage,
+  AllTrustsPage,
+  Trust0xOverviewPage
 } from "./pages";
 import {MainNavigation} from "./components/layout/"
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
@@ -88,22 +90,21 @@ import externalContracts from "./contracts/external_contracts";
 import deployedContracts from "./contracts/hardhat_contracts.json";
 import { addContract } from "./contracts/modifyContracts";
 
-import NewTrust from './contracts/SimpleT.json';
-
 import './index.css';
 import background from './logo/Trustor.jpg';
 import logo from './logo/Trustor_name_white.png';
 
-// const { ethers } = require("hardhat");
-// const hre = require("hardhat");
+
+import TrustList from "./database/TrustList";
+import Edit from "./database/edit";
+
+
 const { ethers } = require("ethers");
-// const { Contract, ethers } = require("ethers");
 
 /// 📡 What chain are your contracts deployed to?
 const targetNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
 
-// 😬 Sorry for all the console logging
-const DEBUG = true;
+const DEBUG = false;
 const NETWORKCHECK = true;
 
 // 🛰 providers
@@ -116,11 +117,11 @@ if (DEBUG) console.log("📡 Connecting to Mainnet Ethereum");
 const scaffoldEthProvider = navigator.onLine
   ? new ethers.providers.StaticJsonRpcProvider("https://rpc.scaffoldeth.io:48544")
   : null;
-const poktMainnetProvider = navigator.onLine
-  ? new ethers.providers.StaticJsonRpcProvider(
-      "https://eth-mainnet.gateway.pokt.network/v1/lb/611156b4a585a20035148406",
-    )
-  : null;
+// const poktMainnetProvider = navigator.onLine
+//   ? new ethers.providers.StaticJsonRpcProvider(
+//       "https://eth-mainnet.gateway.pokt.network/v1/lb/611156b4a585a20035148406",
+//     )
+//   : null;
 const mainnetInfura = navigator.onLine
   ? new ethers.providers.StaticJsonRpcProvider("https://mainnet.infura.io/v3/" + INFURA_ID)
   : null;
@@ -142,16 +143,18 @@ const walletLink = new WalletLink({
 });
 
 // WalletLink provider
-const walletLinkProvider = walletLink.makeWeb3Provider(`https://mainnet.infura.io/v3/${INFURA_ID}`, 1);
+const walletLinkProvider = walletLink.makeWeb3Provider(
+  `https://mainnet.infura.io/v3/${INFURA_ID}`, 
+  1
+);
 
-// Portis ID: 6255fb2b-58c8-433b-a2c9-62098c05ddc9
 /*
   Web3 modal helps us "connect" external wallets:
 */
 const web3Modal = new Web3Modal({
-  network: "mainnet", // Optional. If using WalletConnect on xDai, change network to "xdai" and add RPC info below for xDai chain.
-  cacheProvider: true, // optional
-  theme: "light", // optional. Change to "dark" for a dark theme.
+  network: "mainnet", 
+  cacheProvider: true, 
+  theme: "light", 
   providerOptions: {
     walletconnect: {
       package: WalletConnectProvider, // required
@@ -202,13 +205,11 @@ const web3Modal = new Web3Modal({
 
 
 
-
-
 function App(props) {
   const mainnetProvider =
-    poktMainnetProvider && poktMainnetProvider._isProvider
-      ? poktMainnetProvider
-      : scaffoldEthProvider && scaffoldEthProvider._network
+    // poktMainnetProvider && poktMainnetProvider._isProvider
+    //   ? poktMainnetProvider
+      scaffoldEthProvider && scaffoldEthProvider._network
       ? scaffoldEthProvider
       : mainnetInfura;
 
@@ -274,11 +275,6 @@ function App(props) {
   // EXTERNAL CONTRACT EXAMPLE:
   // If you want to bring in the mainnet DAI contract it would look like:
   const mainnetContracts = useContractLoader(mainnetProvider, contractConfig);
-
-  // If you want to call a function on a new block
-  useOnBlock(mainnetProvider, () => {
-    console.log(`⛓ A new mainnet block is here: ${mainnetProvider._lastBlockNumber}`);
-  });
 
   const trustAddress = readContracts && readContracts.SimpleT && readContracts.SimpleT.address;
 
@@ -456,47 +452,66 @@ function App(props) {
               targetNetwork={targetNetwork}
               gasPrice={gasPrice}
               />
-
+            
             <Content style={{padding: '0 50px',}}>
               <div className="site-layout-content">
-                <Switch>
-                  <Route path="/" exact>                    
-                    <HomePage />
-                  </Route>
-                  <Route path="/trust/new" exact>
-                    <NewTrustPage />
-                  </Route>
-                  <Route exact path="/Overview">
-                    <TrustOverviewPage readContracts={readContracts} />
-                  </Route>
+                <Routes>
+                  <Route path="/" exact element={<HomePage />} />                    
+                  
+                  <Route exact path="/your-trusts" element={<TrustList />} />
+                  <Route path="/your-trusts/edit/:id" element={<Edit />} />
+
+                  <Route path="/your-trusts/new" exact element={
+                    <NewTrustPage 
+                    userSigner={userSigner}
+                    />} 
+                  />
+                  <Route path="/trust" exact element={
+                    <AllTrustsPage />} 
+                  />
+                  <Route path="/your-trusts/:trustAddress" exact element={
+                    <Trust0xOverviewPage 
+                    localProvider={localProvider}
+                    contractConfig={contractConfig}
+                    readContracts={readContracts} 
+                    userSigner={userSigner}
+                    localChainId={localChainId}
+                    />} 
+                  />
+                  <Route exact path="/Overview" element={
+                    <TrustOverviewPage readContracts={readContracts} 
+                    />} 
+                  />
                   <Route exact path="/grantor/overview"> 
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                    <GrantorOverviewPage readContracts={readContracts} />
+                    {/* <React.Fragment>                   
+                      <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                      <GrantorOverviewPage readContracts={readContracts} />
+                    </React.Fragment> */}                    
                   </Route>
-                  <Route exact path="/grantor/admin">
+                  <Route exact path="/grantor/admin" element={
                     <GrantorAdminPage 
                       readContracts={readContracts} 
                       writeContracts={writeContracts}
                       tx={tx}
-                    />
-                  </Route>
-                  <Route exact path="/grantor/approve"> 
+                    />} 
+                  />
+                  
+                  <Route exact path="/grantor/approve" element={
                     <GrantorApprovePage 
                       readContracts={readContracts} 
                       writeContracts={writeContracts}
                       tx={tx}
-                    />
-                  </Route>
+                    />}
+                  />
 
                   <Route exact path="/trustee/overview">
-                  <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                  {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
                   <h1> Trustees </h1>
-                    <TrusteeTable readContracts={readContracts} />
+                    <TrusteeTable readContracts={readContracts} /> */}
                   </Route>
-
                   
                   <Route exact path="/trustee/administer">
-                    <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
                     <Card title="Release Assets to Beneficiaries" extra={<a href="#">code</a>}>                
                         <div className="site-input-group-wrapper">
                           <Button
@@ -510,12 +525,12 @@ function App(props) {
                             Release
                           </Button>  
                         </div>
-                      </Card>
+                      </Card> */}
                     
                   </Route>
 
-                  
-                  <Route path="/contracts">
+
+                  <Route path="/contracts" element={
                     <DebugContractsPage
                       address={address}
                       localProvider={localProvider}
@@ -530,10 +545,9 @@ function App(props) {
                       gasPrice={gasPrice}
                       NETWORKS={NETWORKS}
                       contractConfig={contractConfig}
-
-                    />
-                  </Route>
-                </Switch>
+                    />}
+                  />                  
+                </Routes>
               </div>
             </Content>
             <Footer style={{textAlign: 'center',}}>
