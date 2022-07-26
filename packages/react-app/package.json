@@ -42,6 +42,8 @@
     "graphql": "^15.3.0",
     "humanize-duration": "^3.25.1",
     "isomorphic-fetch": "^3.0.0",
+    "mongodb": "^4.8.0",
+    "mongodb-client-encryption": "^2.1.0",
     "node-watch": "^0.7.1",
     "postcss": "^8.2.6",
     "qrcode.react": "^1.0.0",
@@ -50,7 +52,7 @@
     "react-css-theme-switcher": "^0.2.2",
     "react-dom": "^17.0.2",
     "react-qr-reader": "^2.2.1",
-    "react-router-dom": "^5.2.0",
+    "react-router-dom": "^6.3.0",
     "react-scripts": "4.0.0",
     "walletlink": "^2.1.5",
     "web3modal": "^1.9.1"
