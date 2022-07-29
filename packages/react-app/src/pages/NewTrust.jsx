@@ -23,9 +23,7 @@ export default function NewTrustPage(props) {
   const [form] = Form.useForm();
 
   const onFinish = async (form) => {
-    // e.preventDefault();
-    console.log('Received values of form:', form);
-  
+    // console.log('Received values of form:', form);
      navigate("/your-trusts");
    }
   
@@ -38,7 +36,6 @@ export default function NewTrustPage(props) {
         onFinish={onFinish}
       >
         <Form.Item 
-          // name='trust_name'
           name='name'
           label="Trust Name"
           >
@@ -111,13 +108,10 @@ export default function NewTrustPage(props) {
             htmlType="submit"
             onClick={async () => {
               let vals = form.getFieldsValue('newTrust');              
-              console.log('vals', vals);
 
               let beneficiaries = vals['newBeneficiaries'];
               let bene_addrs = beneficiaries.map(element => element.address)
               let bene_shares = beneficiaries.map(element => element.shares)
-
-              console.log(props.userSigner.address);
 
               const Trust = new ethers.ContractFactory(
                 NewTrust.abi,
@@ -132,38 +126,120 @@ export default function NewTrustPage(props) {
               const Beneficiary = bene_addrs;
               const Shares = bene_shares;
 
-              // const Grantor = "0x69dA48Df7177bc57639F1015E3B9a00f96f7c1d1";
-              // const Trustee = "0x1Bd59929EAb8F689B3c384420f4C50A343110E40";
-              // const Beneficiary = ["0x1Bd59929EAb8F689B3c384420f4C50A343110E40", 
-              //                     "0x79864b719729599a4695f62ad22AD488AB290e58"];
-              // const Shares = [75,25];
               let argz = [Grantor, Trustee, Beneficiary, Shares]
               const newTrustContract = await Trust.deploy(...argz);
               await newTrustContract.deployed();
     
               console.log("Trust Address: ", newTrustContract.address);
                                
+            
+              const newTrustDoc = {};
+
+              newTrustDoc['name'] = vals['name'];
+              newTrustDoc['trust_address'] = newTrustContract.address;
               
-                  //  When a post request is sent to the create url, we'll add a new record to the database.
-                const newTrustDoc = {};
-                newTrustDoc['name'] = vals['name'];
-                newTrustDoc['trust_address'] = newTrustContract.address;
-                newTrustDoc['_id'] = newTrustContract.address;
-                newTrustDoc['grantor_address'] = Grantor;
-                newTrustDoc['beneficiary_address'] = Beneficiary;
-                newTrustDoc['beneficiary_shares'] = Shares;
-                console.log('newTrustDoc', newTrustDoc);
-                await fetch("http://localhost:5000/record/add", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify(newTrustDoc),
-                })
-                .catch(error => {
-                  window.alert(error);
-                  return;
-                });
+              newTrustDoc['grantor_address'] = Grantor;
+              newTrustDoc['trustee_address'] = Trustee;
+              newTrustDoc['beneficiary_address'] = Beneficiary;
+              newTrustDoc['beneficiary_shares'] = Shares;
+              // console.log('newTrustDoc', newTrustDoc);
+              
+              let roles = ['grantor', 'trustee', 'beneficiary']
+              
+
+
+              roles.forEach(async (role, idx)=>{
+                if (role === 'beneficiary') {
+                  console.log('beneficiaries',beneficiaries);
+                  // beneficiaries.forEach(async (beneficiary, idx)=>{
+                  //   let newRoleTrust = {
+                  //     _id : beneficiary.address,
+                  //     trust : newTrustDoc,
+                  //     role: role
+                  //   }
+                  //   await fetch("http://localhost:5000/record/add", {
+                  //     method: "POST",
+                  //     headers: {
+                  //       "Content-Type": "application/json",
+                  //     },
+                  //     body: JSON.stringify(newRoleTrust),
+                  //   })
+                  //   .catch(error => {
+                  //     window.alert(error);
+                  //     return;
+                  //   });
+                  // });
+
+                } else {
+                  const newRoleTrust = {
+                    _id : newTrustDoc[`${role}_address`],
+                    trust : newTrustDoc,
+                    role: role
+                  }
+
+                  console.log('newRoleTrust', newRoleTrust);
+
+                  let response = await fetch(
+                    `http://localhost:5000/record/${newRoleTrust['_id']}`
+                  )
+                  .catch(error => {
+                    // window.alert(error);
+                    console.log(error);
+                    return;
+                  });
+                  
+                  const record = await response.json();
+
+                  if (!record) {
+                    // window.alert(`Record with id ${newRoleTrust['_id']} not found`);
+                    await fetch("http://localhost:5000/record/add", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify(newRoleTrust),
+                    })
+                    .catch(error => {
+                      window.alert(error);
+                      return;
+                    });
+                    // navigate("/");
+                    return;
+                  } else {
+                    console.log('record FOUND!!!!: ', record);
+                    // Add trust to ID
+                    await fetch(`http://localhost:5000/new-trust/${newRoleTrust['_id']}`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify(newRoleTrust),
+                    })
+                    .catch(error => {
+                      window.alert(error);
+                      return;
+                    });
+                  }
+
+
+
+
+                  // await fetch("http://localhost:5000/record/add", {
+                  //   method: "POST",
+                  //   headers: {
+                  //     "Content-Type": "application/json",
+                  //   },
+                  //   body: JSON.stringify(newRoleTrust),
+                  // })
+                  // .catch(error => {
+                  //   window.alert(error);
+                  //   return;
+                  // });
+                }
+              });
+
+
+
               // const allTrustContracts = trustContracts;
     
               // console.log("All Trust Contracts: ", trustContracts);
