@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useLocation } from 'react-router-dom';
 import { 
   Button, 
   Card, 
@@ -11,13 +12,16 @@ import {
   MinusCircleOutlined, 
   PlusCircleOutlined,
 } from '@ant-design/icons';
-
+import {
+  useContractLoader,
+  useContractReader,
+} from "eth-hooks";
 import {
   GrantorTable,
   TrusteeTable,
   BeneficiaryTable,
 } from "../components";
-
+import deployedContracts from "../contracts/hardhat_contracts.json"
 
 
 export default function GrantorAdminPage(props) {
@@ -28,10 +32,33 @@ export default function GrantorAdminPage(props) {
   const onFinish = (values) => {
     console.log('Received values of form:', values);
   };
+
+  function getCurrentTrust() {
+    const location = useLocation();
+    const splitPath = (location.pathname).split('/')
+    const currentTrust  = splitPath[2]
+    console.log('location.pathname', currentTrust)
+    return currentTrust;
+  }
+
+  let trust_address = getCurrentTrust()
+  deployedContracts[31337]['localhost']['contracts']['SimpleT']['address']=trust_address
+
+  const contractConfig = {
+    deployedContracts: deployedContracts
+  };
+
+    // console.log('deployedContracts', 
+    // deployedContracts[31337]['localhost']['contracts']['SimpleT']['address']
+    // )
+
+    // Load in your local 📝 contract and read a value from it:
+    const readContracts = useContractLoader(props.localProvider, contractConfig);
+    
   return (
     <div>  
       <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-      <GrantorTable readContracts={props.readContracts} />
+      <GrantorTable readContracts={readContracts} />
       <Divider orientation="left">Modify Grantor Actions</Divider>
        <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
         <Card title="Add Grantor" >                

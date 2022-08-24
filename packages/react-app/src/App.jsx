@@ -20,20 +20,6 @@ import {
 } from "antd";
 const { Header, Footer, Sider, Content } = Layout;
 import "antd/dist/antd.css";
-import { 
-  LaptopOutlined, 
-  NotificationOutlined, 
-  UserOutlined,
-  DesktopOutlined,
-  FileOutlined,
-  PieChartOutlined,
-  TeamOutlined,
-  FieldTimeOutlined,
-  MinusCircleOutlined, 
-  PlusOutlined,
-  PlusCircleOutlined,
-  HomeOutlined,
-} from '@ant-design/icons';
 import Authereum from "authereum";
 import {
   useBalance,
@@ -67,6 +53,7 @@ import {
   TrusteeTable,
   BeneficiaryTable,
   SideBar,
+  PDFFile
 } from "./components";
 import { AddGrantor, ReleaseAssets } from "./components/ContractFunctions";
 import {
@@ -79,9 +66,9 @@ import {
   GrantorApprovePage,
   DebugContractsPage,
   AllTrustsPage,
-  Trust0xOverviewPage
+  Trust0xOverviewPage,
+  TrustList
 } from "./pages";
-import {MainNavigation} from "./components/layout/"
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 
@@ -90,13 +77,8 @@ import externalContracts from "./contracts/external_contracts";
 import deployedContracts from "./contracts/hardhat_contracts.json";
 import { addContract } from "./contracts/modifyContracts";
 
-import './index.css';
-import background from './logo/Trustor.jpg';
 import logo from './logo/Trustor_name_white.png';
-
-
-import TrustList from "./database/TrustList";
-import Edit from "./database/edit";
+import './index.css';
 
 
 const { ethers } = require("ethers");
@@ -260,6 +242,8 @@ function App(props) {
 
   // 🏗 scaffold-eth is full of handy hooks like this one to get your balance:
   const yourLocalBalance = useBalance(localProvider, address);
+
+  
 
   const contractConfig = { 
     deployedContracts: deployedContracts || {}, 
@@ -436,7 +420,10 @@ function App(props) {
         <Layout style={{ minHeight: '100vh', }}>
           <Sider collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)}>
             <img src={logo} className="logo" />
-            <SideBar />
+            <SideBar 
+              userSigner={userSigner}
+              address={address}
+            />
           </Sider>
           <Layout className="site-layout">
             <LocalHeader
@@ -456,39 +443,61 @@ function App(props) {
             <Content style={{padding: '0 50px',}}>
               <div className="site-layout-content">
                 <Routes>
-                  <Route path="/" exact element={<HomePage />} />                    
-                  
-                  <Route exact path="/your-trusts" element={<TrustList />} />
-                  <Route path="/your-trusts/edit/:id" element={<Edit />} />
-
-                  <Route path="/your-trusts/new" exact element={
-                    <NewTrustPage 
-                    userSigner={userSigner}
-                    />} 
-                  />
-                  <Route path="/trust" exact element={
-                    <AllTrustsPage />} 
-                  />
-                  <Route path="/your-trusts/:trustAddress" exact element={
-                    <Trust0xOverviewPage 
+                  <Route path="/" exact element={<HomePage />} />
+                  <Route exact path="/trusts" element={
+                    <TrustList 
                     localProvider={localProvider}
                     contractConfig={contractConfig}
                     readContracts={readContracts} 
                     userSigner={userSigner}
                     localChainId={localChainId}
+                    address={address}
                     />} 
                   />
-                  <Route exact path="/Overview" element={
-                    <TrustOverviewPage readContracts={readContracts} 
+                  {/* <Route path="/trusts/edit/:id" element={<Edit />} /> */}
+
+                  <Route path="/trusts/new" exact element={
+                    <NewTrustPage 
+                    localProvider={localProvider}
+                    contractConfig={contractConfig}
+                    readContracts={readContracts} 
+                    userSigner={userSigner}
+                    localChainId={localChainId}
+                    address={address}
                     />} 
                   />
-                  <Route exact path="/grantor/overview"> 
-                    {/* <React.Fragment>                   
-                      <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-                      <GrantorOverviewPage readContracts={readContracts} />
-                    </React.Fragment> */}                    
-                  </Route>
-                  <Route exact path="/grantor/admin" element={
+                  <Route path="/trust" exact element={
+                    <AllTrustsPage />} 
+                  />
+                  <Route 
+                    path="/trusts/:trustAddress" exact 
+                    element={
+                      <Trust0xOverviewPage 
+                        localProvider={localProvider}
+                        contractConfig={contractConfig}
+                        readContracts={readContracts} 
+                        userSigner={userSigner}
+                        localChainId={localChainId}
+                        address={address}
+                      />
+                    } 
+                  />
+ 
+ <Route 
+                    path="/trusts/:trustAddress/pdf" exact 
+                    element={
+                      <PDFFile 
+                        localProvider={localProvider}
+                        contractConfig={contractConfig}
+                        readContracts={readContracts} 
+                        userSigner={userSigner}
+                        localChainId={localChainId}
+                        address={address}
+                      />
+                    } 
+                  />
+
+                  <Route exact path="/trusts/:trustAddress/grantor" element={
                     <GrantorAdminPage 
                       readContracts={readContracts} 
                       writeContracts={writeContracts}
@@ -546,7 +555,22 @@ function App(props) {
                       NETWORKS={NETWORKS}
                       contractConfig={contractConfig}
                     />}
-                  />                  
+                  />   
+                  <Route 
+                    path="/mainnetdai" 
+                    element={
+                      <Contract
+                        name="DAI"
+                        customContract={mainnetContracts && mainnetContracts.contracts && mainnetContracts.contracts.DAI}
+                        signer={userSigner}
+                        provider={mainnetProvider}
+                        address={address}
+                        blockExplorer="https://etherscan.io/"
+                        contractConfig={contractConfig}
+                        chainId={1}                  
+                      />      
+                    } 
+                  />    
                 </Routes>
               </div>
             </Content>

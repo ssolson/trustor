@@ -1,9 +1,17 @@
-import NewTrust from '../contracts/SimpleT.json';
+// import NewTrust from '../contracts/SimpleT.json';
+import NewTrust from '../contracts/bytecode.json';
 import { useNavigate } from "react-router-dom";
-import React, { useState } from 'react';
+import {useContractLoader } from "eth-hooks";
 const { ethers } = require("ethers");
+import React from 'react';
 import 'antd/dist/antd.css';
-
+import {
+  addNewTrust
+} from '../helpers/database'
+import { 
+  MinusCircleOutlined, 
+  PlusCircleOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   DatePicker,
@@ -12,21 +20,44 @@ import {
   InputNumber,
   Space,
 } from 'antd';
-import { 
-  MinusCircleOutlined, 
-  PlusCircleOutlined,
-} from '@ant-design/icons';
+
+
 
 
 export default function NewTrustPage(props) {
   const navigate = useNavigate(); 
   const [form] = Form.useForm();
 
-  const onFinish = async (form) => {
-    // console.log('Received values of form:', form);
-     navigate("/your-trusts");
+  const onFinish = async (form) => {    
+    //  navigate("/trusts");
+    console.log("Amazing!")
    }
   
+  const contracts = useContractLoader(props.localProvider, props.contractConfig, props.localChainId);
+  let lockedContract = contracts ? contracts["SimpleT"] : "";
+  console.log('lockedContract', lockedContract)
+  if (lockedContract){
+    console.log('connect', lockedContract.connect(props.userSigner) );
+  }
+  const contract = {...lockedContract};
+  console.log('contract', contract)
+
+  contract['address'] = "0x8B0125E6ceFe1B430803CDfEE4fe5F71a3B9FFe9";
+  // console.log('contract', contract)
+
+  if (contract.interface) {
+  const displayedContractFunctions = contract
+  ? Object.values(contract.interface.functions).filter(
+      // fn => fn.type === "function" && !(props.show && props.show.indexOf(fn.name) < 0),
+      fn => fn.type === "function" ,
+    )
+  : [];
+  console.log('displayedContractFunctions', displayedContractFunctions)
+
+  }
+  
+
+
   return (
     <div>
       <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
@@ -107,222 +138,181 @@ export default function NewTrustPage(props) {
             type="primary" 
             htmlType="submit"
             onClick={async () => {
+              // Step 1: Collect Data from input fields to pass to Smart COntract as arguments
               let vals = form.getFieldsValue('newTrust');              
 
               let beneficiaries = vals['newBeneficiaries'];
               let bene_addrs = beneficiaries.map(element => element.address)
               let bene_shares = beneficiaries.map(element => element.shares)
-
-              const Trust = new ethers.ContractFactory(
-                NewTrust.abi,
-                NewTrust.bytecode,
-                props.userSigner
-              );
-    
-              console.log("New TRUST: ", Trust);
-    
+              
+              const Name = vals['name'];
               const Grantor = vals['grantor_address'];
               const Trustee = vals['trustee_address'];
               const Beneficiary = bene_addrs;
               const Shares = bene_shares;
 
-              let argz = [Grantor, Trustee, Beneficiary, Shares]
+              let argz = [Name, Grantor, Trustee, Beneficiary, Shares]
+
+              // Step 2: Initiate and deploy the smart contract
+              const Trust = new ethers.ContractFactory(
+                NewTrust.abi,
+                NewTrust.bytecode,
+                props.userSigner
+              );
+
               const newTrustContract = await Trust.deploy(...argz);
               await newTrustContract.deployed();
     
-              console.log("Trust Address: ", newTrustContract.address);
+              const new_trust_address = newTrustContract.address;
+              console.log("Trust Address: ",new_trust_address);
                                
+              // Step 3: Add the trust to the users
+              const newTrustDoc = {            
+                name: vals['name'],
+                trust_address: new_trust_address,                
+                grantor_address: Grantor,
+                trustee_address: Trustee,
+                beneficiary_address: Beneficiary,
+                beneficiary_shares: Shares,
+              }
             
-              const newTrustDoc = {};
-
-              newTrustDoc['name'] = vals['name'];
-              newTrustDoc['trust_address'] = newTrustContract.address;
-              
-              newTrustDoc['grantor_address'] = Grantor;
-              newTrustDoc['trustee_address'] = Trustee;
-              newTrustDoc['beneficiary_address'] = Beneficiary;
-              newTrustDoc['beneficiary_shares'] = Shares;
-              // console.log('newTrustDoc', newTrustDoc);
-              
+              // Add roles to users in the User collection
               let roles = ['grantor', 'trustee', 'beneficiary']
-              
 
-
-              roles.forEach(async (role, idx)=>{
+              // Assign roles to unique addresses
+              let address_roles = {};
+              roles.forEach((role, idx)=>{                
                 if (role === 'beneficiary') {
-                  console.log('beneficiaries',beneficiaries);
-                  // beneficiaries.forEach(async (beneficiary, idx)=>{
-                  //   let newRoleTrust = {
-                  //     _id : beneficiary.address,
-                  //     trust : newTrustDoc,
-                  //     role: role
-                  //   }
-                  //   await fetch("http://localhost:5000/record/add", {
-                  //     method: "POST",
-                  //     headers: {
-                  //       "Content-Type": "application/json",
-                  //     },
-                  //     body: JSON.stringify(newRoleTrust),
-                  //   })
-                  //   .catch(error => {
-                  //     window.alert(error);
-                  //     return;
-                  //   });
-                  // });
-
+                  beneficiaries.forEach( (beneficiary, idx)=>{
+                    let beneficiary_address = beneficiary.address
+                    console.log('beneficiary_address', beneficiary_address);
+                    if (!address_roles[beneficiary_address]) {
+                      address_roles[beneficiary_address] = [role]  
+                    } else {
+                      address_roles[beneficiary_address].push(role) 
+                    }
+                  })
                 } else {
-                  const newRoleTrust = {
-                    _id : newTrustDoc[`${role}_address`],
-                    trust : newTrustDoc,
-                    role: role
+                  let user_address = newTrustDoc[`${role}_address`];
+                  console.log('address_roles[user_address]', address_roles[user_address]);
+                  console.log(role);
+                  if (!address_roles[user_address]) {
+                    address_roles[user_address] = [role]  
+                  } else {
+                    address_roles[user_address].push(role)
                   }
+                  console.log('MODIFIED', address_roles[user_address]);
+                }              
+              })
+              console.log(address_roles);
+              // console.log('addresses[user_address]', addresses[user_address]);
+              let addresses = Object.keys(address_roles)
+              addresses.forEach(async (address, idx)=> {
 
-                  console.log('newRoleTrust', newRoleTrust);
-
+                  // Check if user exists in User Collection
                   let response = await fetch(
-                    `http://localhost:5000/record/${newRoleTrust['_id']}`
+                    `http://localhost:5000/user/${address}`
                   )
                   .catch(error => {
                     // window.alert(error);
                     console.log(error);
                     return;
                   });
-                  
+
+                  // Get Response
                   const record = await response.json();
+                  console.log("record", record)
+                  // Now: add user if not exist, append trust to user if currently exists
+                  if (!record) { // User not exist, create user record
 
-                  if (!record) {
-                    // window.alert(`Record with id ${newRoleTrust['_id']} not found`);
-                    await fetch("http://localhost:5000/record/add", {
+                    const newUser = {
+                      _id : address,
+                      [new_trust_address] : {
+                      role: address_roles[address]
+                      }
+                    }
+
+                    await fetch("http://localhost:5000/user/add", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
                       },
-                      body: JSON.stringify(newRoleTrust),
+                      body: JSON.stringify(newUser),
                     })
                     .catch(error => {
                       window.alert(error);
                       return;
                     });
-                    // navigate("/");
+                    
                     return;
-                  } else {
-                    console.log('record FOUND!!!!: ', record);
-                    // Add trust to ID
-                    await fetch(`http://localhost:5000/new-trust/${newRoleTrust['_id']}`, {
+                  } else { // User already exists add trust to user.
+                    // If new trust for user add trust, else modify trust roles
+                    console.log('record[new_trust_address]', record[new_trust_address])
+                    console.log('record[new_trust_address] === undefined',record[new_trust_address] === undefined)
+                    
+                    // Create new trust record
+                    const newTrustData = {
+                      [new_trust_address] : {
+                        role: address_roles[address]
+                      }
+                    }
+                    console.log('newTrust', newTrustData);
+
+
+                    let response2 =await fetch(`http://localhost:5000/user/${address}`, {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
                       },
-                      body: JSON.stringify(newRoleTrust),
+                      body: JSON.stringify(newTrustData),
                     })
                     .catch(error => {
                       window.alert(error);
                       return;
                     });
+
                   }
-
-
-
-
-                  // await fetch("http://localhost:5000/record/add", {
-                  //   method: "POST",
-                  //   headers: {
-                  //     "Content-Type": "application/json",
-                  //   },
-                  //   body: JSON.stringify(newRoleTrust),
-                  // })
-                  // .catch(error => {
-                  //   window.alert(error);
-                  //   return;
-                  // });
-                }
               });
 
 
+              // Add newTrust to the Trust Collection
+              const newTrust = {   
+                _id: new_trust_address,
+                name: vals['name'],
+                trust_address: new_trust_address,                
+                grantor_address: Grantor,
+                trustee_address: Trustee,
+                beneficiary_address: Beneficiary,
+                beneficiary_shares: Shares,
+              }
+              newTrust['_id'] = new_trust_address;
 
-              // const allTrustContracts = trustContracts;
-    
-              // console.log("All Trust Contracts: ", trustContracts);
-              
-              // const newTrust = {
-              //   account: {
-              //     vals['grantor_address'] :
-              //       trusts: {
-              //         newTrustContract.address : {
-              //           roles: 'grantor'
-              //         }
-              //       }
-              //   name: vals['grantor_address'],
-              //   address: newTrustContract.address
-              // }
-
-              // const newTrust = {
-              //   name: vals['grantor_address'],
-              //   address: newTrustContract.address
-              // }
-
-
-
-              // fetch(
-              //   'https://trustor-2e1dd-default-rtdb.firebaseio.com/trusts.json',
-              //   {
-              //     method: 'POST',
-              //     body: JSON.stringify(newTrust),
-              //     headers: {
-              //       'Content-Type': 'application/json'
-              //     }
-              //   })
+              addNewTrust(newTrust)
             }}
             >
             Submit
           </Button>
         </Form.Item>
       </Form>
-      </div>
-  )
-}
 
-
-    {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }} />  
-    
-    <Button
+      <Button
       type={"primary"}
       onClick={
-        async (trustContracts) => {
+        async () => {
           console.log("You clicked the button!")
-          
-          const Trust = new ethers.ContractFactory(
-            NewTrust.abi,
-            NewTrust.bytecode,
-            userSigner
-          );
-
-          console.log("New TRUST: ", Trust);
-
-          const Grantor = "0x69dA48Df7177bc57639F1015E3B9a00f96f7c1d1";
-          const Trustee = "0x1Bd59929EAb8F689B3c384420f4C50A343110E40";
-          const Beneficiary = ["0x1Bd59929EAb8F689B3c384420f4C50A343110E40", 
-                              "0x79864b719729599a4695f62ad22AD488AB290e58"];
-          const Percentages = [75,25];
-          let argz = [Grantor, Trustee, Beneficiary, Percentages]
-          const newTrustContract = await Trust.deploy(...argz);
-          await newTrustContract.deployed();
-
-          console.log("Trust Address: ", newTrustContract.address);
-                                    
-          const allTrustContracts = trustContracts;
-
-          console.log("All Trust Contracts: ", trustContracts);
-
-          // addContract("NewContract1",  newTrustContract.address);
-          
-
-          // setTrustContracts(allTrustContracts.push(newTrustContract.address));
-          // console.log("All Trust Address: ", trustContracts);
-
+          console.log("stuff", stuff['bytecode'])
         }
       }
     >  
         Click it
     </Button>
-    New Trust Page  */}
+    
+
+      </div>
+      
+  )
+}
+
+
+    {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }} />  */}
+    

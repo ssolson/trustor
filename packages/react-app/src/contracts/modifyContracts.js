@@ -1,11 +1,5 @@
 
 
-
-
-// console.log( obj );
-
-
-
 export function addContract(contractName, address) {
   const fs = require("fs");
   const SIMPLETABI = [
@@ -1340,10 +1334,3 @@ export function addContract(contractName, address) {
  fs.writeFileSync("contracts.txt", JSON.stringify(obj, null, 4));
  return obj;
 }
-
-// contractName = 'Booty'
-// address='0x6B175474E89094C44Da98b954EedeAC495271d0F'
-// obj = newContract(contractName, address)
-
-// console.log( obj );
-

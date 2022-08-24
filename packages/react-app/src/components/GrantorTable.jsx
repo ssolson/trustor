@@ -1,7 +1,12 @@
-import {useContractLoader, useContractReader } from "eth-hooks";
-import React, { useCallback, useEffect, useState } from "react";
+import {useContractReader } from "eth-hooks";
+import React, { useEffect, useState } from "react";
 import { Table, Tag } from "antd";
-import "antd/dist/antd.css";
+import {
+  addNewTrust,
+  getUserTrusts,
+  getTrustData,
+  updateTrustBlockchainValues
+} from '../helpers/database'
 
 const { ethers } = require("ethers");
 
@@ -64,42 +69,57 @@ export default function GrantorTable({
 
 
   const trustAddress = readContracts && readContracts.SimpleT && readContracts.SimpleT.address;
-  const allGrantors = useContractReader(readContracts, "SimpleT", "getGrantors", []);
+  const getGrantors = useContractReader(readContracts, "SimpleT", "getGrantors", []);
 
-  async function getAllGrantors()  {
-    if (allGrantors) {
-      const allGrantors = await readContracts.SimpleT.getGrantors();
-      
-      console.log("allGrantors", allGrantors);
-      var grantorData =[];
-  
-      for (const index in allGrantors) {
-        let grantorAdress = allGrantors[index];
-        let tokenID = await readContracts.SimpleT._token_ids(grantorAdress);
-        let grantor_bal = await readContracts.SimpleT.balanceOf(grantorAdress, tokenID.toNumber());
-        let trust_bal = await readContracts.SimpleT.balanceOf(trustAddress, tokenID.toNumber());
-        let isActive = trust_bal>0 ? true : false;  
-        console.log("isActive: ", isActive);
 
-        let i=parseInt(index)+1;
-        let dat={
-          key: index, 
-          name: `${i}`,
-          address:  grantorAdress,
-          token: tokenID.toNumber(),
-          grantor_bal: ethers.utils.formatEther(grantor_bal),
-          trust_bal: ethers.utils.formatEther(trust_bal),
-          active: [String(isActive)],
-        };       
-        grantorData.push(dat); // console.log(dat);
+  useEffect(async ()=> {
+      // const allGrantors = await readContracts.SimpleT.getGrantors();
+      if (getGrantors) {
+        var grantorData =[];  
+        for (const index in getGrantors) {
+          let grantorAdress = getGrantors[index];
+          let tokenID = await readContracts.SimpleT._token_ids(grantorAdress);
+          let grantor_bal = await readContracts.SimpleT.balanceOf(grantorAdress, tokenID.toNumber());
+          let trust_bal = await readContracts.SimpleT.balanceOf(trustAddress, tokenID.toNumber());
+          let isActive = trust_bal>0 ? true : false;  
+          console.log("isActive: ", isActive);
+
+          let i=parseInt(index)+1;
+          let dat={
+            key: index, 
+            name: `${i}`,
+            address:  grantorAdress,
+            token: tokenID.toNumber(),
+            grantor_bal: ethers.utils.formatEther(grantor_bal),
+            trust_bal: ethers.utils.formatEther(trust_bal),
+            active: [String(isActive)],
+          };       
+          grantorData.push(dat); // console.log(dat);
+        }
+        console.log("GrantorData: ",grantorData);
+        setGrantorData(grantorData)
+
+        // Replace the Above with data from the database
+        const response = getTrustData(trustAddress)
+        const trustData = await response;
+        console.log("trustData: ", trustData);
+        // let dat2={
+        //   // key: index, 
+        //   name: `${i}`,
+        //   address:  grantorAdress,
+        //   token: tokenID.toNumber(),
+        //   grantor_bal: ethers.utils.formatEther(grantor_bal),
+        //   trust_bal: ethers.utils.formatEther(trust_bal),
+        //   active: [String(isActive)],
+        // }; 
       }
-      console.log("GrantorData: ",grantorData);
-      setGrantorData(grantorData)
-      return grantorData;
-    }
-  }
+      
+  }, [getGrantors])
 
-  const [newGrantorAddr, setNewGrantorAddr] = useState("loading...");
+
+
+
+  // const [newGrantorAddr, setNewGrantorAddr] = useState("loading...");
   const [grantorData, setGrantorData] = useState();
   const [data1, setData] = useState();
   const [loading, setLoading] = useState(false);
@@ -108,25 +128,25 @@ export default function GrantorTable({
     pageSize: 10,
   });
 
-  const fetchData = (params = {}) => {
-    setLoading(true);
-    getAllGrantors()
-      .then( results => {
-        console.log("🏦 results:", results)
-        setData(results);
-        setLoading(false);
-        setPagination({
-          ...params.pagination,
-          total: 10, //Need to fix this
-        });
-      });
-  };
+  // const fetchData = (params = {}) => {
+  //   setLoading(true);
+  //   getAllGrantors()
+  //     .then( results => {
+  //       console.log("🏦 results:", results)
+  //       setData(results);
+  //       setLoading(false);
+  //       setPagination({
+  //         ...params.pagination,
+  //         total: 10, //Need to fix this
+  //       });
+  //     });
+  // };
     
-  useEffect(() => {
-    fetchData({
-      pagination,
-    });
-  }, [allGrantors]);
+  // useEffect(() => {
+  //   fetchData({
+  //     pagination,
+  //   });
+  // }, [getGrantors]);
   
   const handleTableChange = (newPagination, filters, sorter) => {
     fetchData({
@@ -140,13 +160,15 @@ export default function GrantorTable({
 
   return (
     <div>
-    <Table
-      columns={columns}
-      dataSource={data1}
-      pagination={pagination}
-      loading={loading}
-      onChange={handleTableChange}
-    />
+      <Table
+        columns={columns}
+        dataSource={grantorData}
+        pagination={pagination}
+        loading={loading}
+        onChange={handleTableChange}
+      />
+
+
     </div>
   );
 }

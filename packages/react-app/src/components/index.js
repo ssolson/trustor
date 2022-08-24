@@ -22,3 +22,6 @@ export { default as TrusteeTable } from "./TrusteeTable";
 export { default as BeneficiaryTable } from "./BeneficiaryTable";
 export { default as SideBar } from "./SideBar";
 // export { default as AddGrantor } from "./Contract/AddGrantor";
+export { default as SyncChainToDB } from "./SyncChainToDB";
+export { default as ExecuteFunction } from "./ExecuteFunction";
+export { default as PDFFile } from "./PDFFile";
