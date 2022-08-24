@@ -1,0 +1,8 @@
+ol {
+  list-style-type:none;
+  counter-reset:list;
+}
+ol li:before {
+    counter-increment:list;
+    content: counters(list, ".") ". ";
+}
