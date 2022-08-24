@@ -4,15 +4,6 @@ pragma solidity 0.8.14;
 import "./Grantor.sol";
 import "./Trustee.sol";
 import "./Beneficiary.sol";
-// import "./EnumerableMap.sol";
-// import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
-// import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
-
-// import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-
-// import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-// import "@openzeppelin/contracts/governance/TimelockController.sol";
 
 /// @title Simple T
 /// @author sters.eth
@@ -21,7 +12,9 @@ contract SimpleT is  Beneficiary, Trustee, Grantor {
     event CkeckIn(address owner, uint256 newStart, uint256 newEnd);
     event PeriodSet(address owner, uint256 newPeriod);    
 
-    string public constant name = "Simple T";    
+    string public constant version = "0.1.0";    
+
+    string public name ;
    
     // /// @dev set the possible Trust States
     // enum TrustStates{ Initializing, Active, Paused, Admin, Executed}
@@ -55,11 +48,14 @@ contract SimpleT is  Beneficiary, Trustee, Grantor {
 
     // ADD SUCCESSOR TRUSTEE AT INSTANTIATION
     constructor(
+        string  memory _name,
         address _grantor,
         address _initial_trustee,
         address[] memory _beneficiaries,
         uint256[] memory _percentages
      ) {
+        // Set Trust Name
+        name = _name;
         // Trust is initialized at deployment
         initializedTrust=block.timestamp;
         checkInPeriodStart=block.timestamp;       
