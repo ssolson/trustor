@@ -3,22 +3,8 @@ import { Menu, Layout } from "antd";
 import React, { useEffect, useState } from "react";
 import { 
   LaptopOutlined, 
-  NotificationOutlined, 
-  UserOutlined,
-  DesktopOutlined,
-  FileOutlined,
-  PieChartOutlined,
-  TeamOutlined,
-  FieldTimeOutlined,
-  RobotFilled,
-  RobotOutlined,
   HomeOutlined,
-  DiffOutlined,
-  FormOutlined,
-  OrderedListOutlined,
-  CopyOutlined,
 } from '@ant-design/icons';
-
 
 
 function getItem(label, key, icon, children, type) {
@@ -33,19 +19,23 @@ function getItem(label, key, icon, children, type) {
 
 
 const getUserTrusts = async userSigner => {
-  // console.log("userSigner",userSigner);
-  const response = await fetch(`http://localhost:5000/user/${userSigner}`);
+  // Define Trusts as empty
+  let trusts = [];
+  let user_data = {};
 
-  if (!response.ok) {
-    const message = `An error occurred: ${response.statusText}`;
-    window.alert(message);
-    return;
+  try {
+    const response = await fetch(`http://localhost:5000/user/${userSigner}`);
+    if (!response.ok) {
+      const message = `An error occurred: ${response.statusText}`;
+      window.alert(message);
+      return;
+    }
+    user_data = await response.json();
+
+  } catch (error) {
+    console.log("SideBar thinks you are offline :o")
   }
 
-  const user_data = await response.json();
-  // console.log('user_data', user_data);
-
-  let trusts = [];
   if (user_data) {
     for (const [trust_address, value] of Object.entries(user_data)) {
       // let current_trust = {};

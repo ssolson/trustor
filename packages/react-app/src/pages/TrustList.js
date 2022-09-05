@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Table, Tag, Button } from "antd";
-import externalContracts from "../contracts/external_contracts";
+// import externalContracts from "../contracts/external_contracts";
 import simpleT_ABI from "../contracts/SimpleT_ABI";
 import {useContractLoader, useContractReader } from "eth-hooks";
 
@@ -12,7 +12,7 @@ import {
   updateTrustBlockchainValues
 } from '../helpers/database'
 import { 
-  createContractObj, 
+  // createContractObj, 
   readContract
 } from '../helpers/contracts'
  
@@ -22,8 +22,11 @@ export default function TrustList(props) {
   const [userData, setUserData] = useState();
   const [records, setRecords] = useState();
 
+  // Set user data by calling the database
   useEffect(async () => {
-    const user_data_promise = getUserTrusts(props.address)
+    console.log("address",props.address);
+    // TODO: Check if database is available
+    const user_data_promise = getUserTrusts(props.address);
     const user_data = await user_data_promise;
     setUserData(user_data)
   }, [props.address])
@@ -50,13 +53,10 @@ export default function TrustList(props) {
       }
     });
   }
-  console.log("trust_contracts", trust_contracts);
 
   const contractConfig = {
     deployedContracts: trust_contracts || {}
   };
-  // console.log("props.contractConfig", props.contractConfig);
-  // console.log("contractConfig", contractConfig);
 
   // Load in your local 📝 contract and read a value from it:
   const contracts = useContractLoader(props.localProvider, contractConfig, props.localChainId);
@@ -64,19 +64,15 @@ export default function TrustList(props) {
   
   // SYNC blockchain to Database
   // TODO: Create sync button to limit requests to blockchain
-  // TODO: consider interating over contracts instead of user_data: 
+  // TODO: consider iterating over contracts instead of user_data: 
   //  const address = contract ? contract.address : ""; 
   if (userData) {
     Object.keys(userData).forEach(async (trust_address, index) => {
       if (trust_address != '_id') {
-        console.log("trust_address",trust_address)  
-
         let contract = contracts ? contracts[trust_address] : "";
 
         // Use helper to read contract
         let contractDisplay = readContract(contract, props.userSigner);
-
-        // Await responses
         const responses = await Promise.all(contractDisplay)      
 
         // Array => Object
@@ -85,7 +81,8 @@ export default function TrustList(props) {
         // Look for trust in database
         let trustDataPromise = getTrustData(trust_address);
         let trustData = await trustDataPromise;
-        console.log("trustData", trustData);
+        
+        // Sync the data if the trust was found, else add trust
         if (trustData) {
           updateTrustBlockchainValues(
             trust_address,
@@ -103,8 +100,7 @@ export default function TrustList(props) {
     });
   }
 
-
-
+  // Define the layour of the trusts table
   const columns = [
     {
       title: 'Name',
@@ -123,7 +119,6 @@ export default function TrustList(props) {
       dataIndex: 'role',
       key: 'role',
     },
-
   ];
 
 
@@ -132,7 +127,7 @@ export default function TrustList(props) {
  //===================================================
 
  useEffect(async () => {
-    // // TODO: This is used in sideBar too, extract to single
+    // TODO: This is used in sideBar too, extract to single
     const responsePromise = getUserTrusts(props.address);    
     const userTrusts = await responsePromise;
     console.log('userTrusts', userTrusts)
@@ -163,86 +158,31 @@ export default function TrustList(props) {
    return;
   }, [props.address]);
  
-  // This method will delete a record
-  async function deleteRecord(id) {
-    await fetch(`http://localhost:5000/${id}`, {
-      method: "DELETE"
-    });
-  
-    const newRecords = records.filter((el) => el._id !== id);
-    setRecords(newRecords);
-  }
- 
-
-  const onClick = (e) => {
-    console.log('Content: ', e.currentTarget.dataset.id);
-  }
-
- // This following section will display the table with the records of individuals.
- return (
-   <div>
+  return (
+    <div>
       <div style={{ padding: 25, marginTop: 100, width: 400, margin: "auto" }}/>
-     <h3>Your Trusts</h3>
-     <Table
-      columns={columns}
-      dataSource={records}
-      // pagination={pagination}
-      // loading={loading}
-      // onChange={handleTableChange}
-    />
-  <NavLink className="nav-link" to="/trusts/new">
-    <Button type={"primary"}>
-      New Trust     
-    </Button >
-  </NavLink>
+      <h3>Your Trusts</h3>
+      <Table
+        columns={columns}
+        dataSource={records}
+      />
+      <NavLink className="nav-link" to="/trusts/new">
+        <Button type={"primary"}>
+          New Trust     
+        </Button >
+      </NavLink>
 
-
-
-     {/* Example Button */}
-    {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }} />      
-    <Button
+      <Button
       type={"primary"}
-      onClick={async () => {
-        console.log("records", records);
+      onClick={
+        async () => {
+          console.log("You clicked the button!")
+          const response = await fetch(`http://localhost:5000/trust/0xb308c562D94B2A8c3fb81CBceBab7d37248675ad`);
         }
       }
     >  
         Click it
-    </Button> */}
+    </Button>
    </div>
  );
 }
-
-// // Render a button by adding to the table columns
-// {
-//   title: 'Action',
-//   dataIndex: 'del',
-//   key: '_id',
-//   render: (text, record) => (
-//     <button 
-//       onClick={async ()=> {
-//         console.log('record',record)
-//         console.log('_id',record._id)
-
-//         const users_with_trust_promise = await fetch(`http://localhost:5000/user/trust/${record._id}`);
-        
-//         const users_with_trust = await users_with_trust_promise.json();
-
-
-//         console.log("users_with_trust", users_with_trust);
-
-
-
-//         // await fetch(`http://localhost:5000/${record._id}`, {
-//         //   method: "DELETE"
-//         // });
-//         // const newRecords = records.filter((el) => el._id !== record._id);
-//         // setRecords(newRecords);
-//         // console.log('newRecords',newRecords)
-
-//       }}
-//       >
-//       {"Delete"}
-//     </button>
-//   )
-// },
