@@ -1,0 +1,12 @@
+{
+    "name": "markdown-json",
+    "cwd": "./",
+    "src": "eg/",
+    "filePattern": "**/*.md",
+    "ignore": "*(icon|input)*",
+    "dist": "./trustTemplate.json",
+    "metadata": true,
+    "server": true,
+    "port": 3001,
+    "deterministicOrder": false
+  }

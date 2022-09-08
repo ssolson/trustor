@@ -1,0 +1,31 @@
+{
+  "app": {
+    "config": "./settings.json",
+    "cwd": "./",
+    "deterministicOrder": false,
+    "display": true,
+    "dist": "./trustTemplate.json",
+    "filePattern": "**/*.md",
+    "ignore": "*(icon|input)*",
+    "port": 3001,
+    "server": true,
+    "src": "eg/",
+    "name": "markdown-json",
+    "metadata": true,
+    "version": "1.6.1"
+  },
+  "data": [
+    {
+      "id": "content\\shortTrust",
+      "contents": "<ol start=\"0\">\n<li>Preface <ol>\n<li>This is an express inter vivos trust (i.e., revocable living trust), created this [X day, year], the terms of which are wholly expressed in this instrument, except for those incorporated by reference.</li>\n<li>The form of delivery of this trust instrument is known as a “smart contract,” which digitally instantiates the terms of this trust instrument for global implementation across all digital and cyber networks, platforms, and systems, which serves to enable the administration of property subject to this trust that is of either digital, physical, or of mixed nature, regardless of medium or media wherein the trust property manifests existence.</li>\n<li>This trust incorporates by reference all programming language, or code, appurtenant to the smart contract carrier of this trust instrument.</li>\n<li>The Grantor of this trust is [X] (herein, &#39;Grantor).</li>\n<li>The Initial Trustee of this trust is [X] (herein, “Initial Trustee”). </li>\n<li>Grantor intends for this trust to be valid under the laws of [x Jurisdiction] and any state or jurisdiction wherein this trust is administered. </li>\n<li>The terms of this trust prevail and override all default provisions of the laws of the situs jurisdiction and the laws of any other state which may have jurisdiction over this trust; mandatory provisions that cannot be waived shall apply to this trust. </li>\n<li>The terms and provisions of this trust instrument that are expressed as programming language or code contained in the digital smart contract and that are incorporated by reference herein shall supplement the provisions of this trust instrument that are expressed in English language form; the Initial and Successor Trustee shall be directed by all the provisions, in whatever form, of this trust instrument for purposes of administering the trust and this trust instrument. </li>\n<li>For purposes of executing this trust, Grantor transfers [X consideration] to Initial Trustee.  </li>\n<li>All property or assets, regardless of kind, form, or nature shall be accepted by the Initial Trustee and any Successor Trustee now and at any time hereafter. </li>\n<li>The terms of this trust instrument govern all aspects of retention, administration, and disposition of trust property for the benefit of Grantor, as initial beneficiary, and for the remainder beneficiaries of this trust.</li>\n</ol>\n</li>\n<li>Article 1<ol>\n<li>For purposes of identification, this trust is referred to as [name]. </li>\n<li>Grantor reserves the power to act on behalf of this trust without limitation, and may amend, restate, or revoke this trust at any time, for any purpose, in whole or in part by republication of this trust in writing, whether expressed digitally or otherwise, and irrespective of the form of language used for the purposes described in this section. </li>\n<li>Grantor may add or remove trust property at any time and for any purpose; Grantor retains fully the unrestricted right to direct and control the distribution of income and principal of the trust, up to and including exhausting all the trust property for the Grantor’s benefit.</li>\n</ol>\n</li>\n</ol>\n",
+      "excerpt": "",
+      "meta": {
+        "relativePath": "content\\shortTrust.html",
+        "createdAt": "2022-09-07T22:26:17.081Z",
+        "lastModified": "2022-09-06T20:09:30.224Z",
+        "size": 3104,
+        "formattedSize": "3.0 KB"
+      }
+    }
+  ]
+}
