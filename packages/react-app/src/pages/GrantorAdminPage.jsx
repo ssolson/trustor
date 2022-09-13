@@ -33,8 +33,9 @@ export default function GrantorAdminPage(props) {
     console.log('Received values of form:', values);
   };
 
+  const location = useLocation();
+
   function getCurrentTrust() {
-    const location = useLocation();
     const splitPath = (location.pathname).split('/')
     const currentTrust  = splitPath[2]
     console.log('location.pathname', currentTrust)
@@ -58,7 +59,7 @@ export default function GrantorAdminPage(props) {
   return (
     <div>  
       <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
-      <GrantorTable readContracts={readContracts} />
+      {/* <GrantorTable readContracts={readContracts} /> */}
       <Divider orientation="left">Modify Grantor Actions</Divider>
        <div style={{ padding: 8, marginTop: 32, width: 400, margin: "auto" }}>
         <Card title="Add Grantor" >                

@@ -80,12 +80,11 @@ export default function SideBar(props) {
   }
   const [user, setUser] = useState(address);
   
-  if (address) {
-    useEffect( () => {
-      // console.log("props", props);
-      setUser(address)
-    }, [address]);
-  }
+
+  useEffect( () => {
+    // console.log("props", props);
+    setUser(address)
+  }, [address]);
 
   useEffect(async () => {
     // console.log("user", user);

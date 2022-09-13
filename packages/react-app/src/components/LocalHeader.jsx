@@ -1,8 +1,11 @@
 import { Layout, Button } from "antd";
 import React, { useState } from "react";
-const { Header } = Layout;
 import { Account } from "../components";
 import { Transactor } from "../helpers";
+const { Header } = Layout;
+const { ethers } = require("ethers");
+
+
 
 export default function LocalHeader(props) {
   const faucetTx = Transactor(props.localProvider, props.gasPrice);

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-
 import { useLocation } from 'react-router-dom';
 import {
   useContractLoader,
@@ -19,7 +18,7 @@ import {
   createContractObj, 
   readContract
 } from '../helpers/contracts'
-import { PDFDownloadLink } from '@react-pdf/renderer';
+// import { PDFDownloadLink } from '@react-pdf/renderer';
 
 
 
@@ -31,9 +30,10 @@ export default function Trust0xOverviewPage(props) {
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
   }
+  
+  const location = useLocation();
 
   function getCurrentTrust() {
-    const location = useLocation();
     const splitPath = (location.pathname).split('/')
     const currentTrust  = splitPath[splitPath.length-1]
     // console.log('location.pathname', currentTrust)
@@ -68,7 +68,7 @@ export default function Trust0xOverviewPage(props) {
       <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
       <h1> {trust_address} </h1>
       <h1> GRANTORS </h1>
-        <GrantorTable readContracts={readContracts} />
+        {/* <GrantorTable readContracts={readContracts} /> */}
       <h1> TRUSTEES </h1>
         <TrusteeTable readContracts={readContracts} />
       <h1> BENEFICIARIES </h1>
@@ -97,7 +97,7 @@ export default function Trust0xOverviewPage(props) {
         />
       </div>
       <div>        
-        <PDFDownloadLink document={<PDFFile />} fileName="FORM">
+        {/* <PDFDownloadLink document={<PDFFile />} fileName="FORM">
           {({ loading }) => 
             loading ? (
               <button>Loading Document...</button>
@@ -105,7 +105,7 @@ export default function Trust0xOverviewPage(props) {
               <button> Download </button>
             )
           }
-        </PDFDownloadLink>
+        </PDFDownloadLink> */}
         {/* <PDFFile /> */}
       </div>
     </div>

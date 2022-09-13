@@ -1,8 +1,6 @@
-// import NewTrust from '../contracts/SimpleT.json';
 import NewTrust from '../contracts/bytecode.json';
 import { useNavigate } from "react-router-dom";
 import {useContractLoader } from "eth-hooks";
-const { ethers } = require("ethers");
 import React from 'react';
 import 'antd/dist/antd.css';
 import {
@@ -20,7 +18,7 @@ import {
   InputNumber,
   Space,
 } from 'antd';
-
+const { ethers } = require("ethers");
 
 
 
@@ -55,8 +53,6 @@ export default function NewTrustPage(props) {
   console.log('displayedContractFunctions', displayedContractFunctions)
 
   }
-  
-
 
   return (
     <div>
@@ -300,7 +296,6 @@ export default function NewTrustPage(props) {
       onClick={
         async () => {
           console.log("You clicked the button!")
-          console.log("stuff", stuff['bytecode'])
         }
       }
     >  
