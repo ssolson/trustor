@@ -86,6 +86,7 @@ const targetNetwork = NETWORKS.localhost; // <------- select your target fronten
 
 const DEBUG = false;
 const NETWORKCHECK = true;
+const USE_BURNER_WALLET = true; // toggle burner wallet feature
 
 // 🛰 providers
 if (DEBUG) console.log("📡 Connecting to Mainnet Ethereum");
@@ -212,7 +213,7 @@ function App(props) {
   /* 🔥 This hook will get the price of Gas from ⛽️ EtherGasStation */
   const gasPrice = useGasPrice(targetNetwork, "fast");
   // Use your injected provider from 🦊 Metamask or if you don't have it then instantly generate a 🔥 burner wallet.
-  const userProviderAndSigner = useUserProviderAndSigner(injectedProvider, localProvider);
+  const userProviderAndSigner = useUserProviderAndSigner(injectedProvider, localProvider, USE_BURNER_WALLET);
   const userSigner = userProviderAndSigner.signer;
 
   useEffect(() => {
@@ -425,6 +426,7 @@ function App(props) {
           </Sider>
           <Layout className="site-layout">
             <LocalHeader
+              useBurner={USE_BURNER_WALLET}
               address={address}
               localProvider={localProvider}
               userSigner={userSigner}
@@ -434,8 +436,18 @@ function App(props) {
               loadWeb3Modal={loadWeb3Modal}
               logoutOfWeb3Modal={logoutOfWeb3Modal}
               blockExplorer={blockExplorer}
-              targetNetwork={targetNetwork}
-              gasPrice={gasPrice}
+
+              // address={address}
+              // localProvider={localProvider}
+              // userSigner={userSigner}
+              // mainnetProvider={mainnetProvider}
+              // price={price}
+              // web3Modal={web3Modal}
+              // loadWeb3Modal={loadWeb3Modal}
+              // logoutOfWeb3Modal={logoutOfWeb3Modal}
+              // blockExplorer={blockExplorer}
+              // targetNetwork={targetNetwork}
+              // gasPrice={gasPrice}
               />
             
             <Content style={{padding: '0 50px',}}>
