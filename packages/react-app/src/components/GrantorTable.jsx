@@ -128,19 +128,19 @@ export default function GrantorTable({
     pageSize: 10,
   });
 
-  // const fetchData = (params = {}) => {
-  //   setLoading(true);
-  //   getAllGrantors()
-  //     .then( results => {
-  //       console.log("🏦 results:", results)
-  //       setData(results);
-  //       setLoading(false);
-  //       setPagination({
-  //         ...params.pagination,
-  //         total: 10, //Need to fix this
-  //       });
-  //     });
-  // };
+  const fetchData = (params = {}) => {
+    setLoading(true);
+    // getAllGrantors()
+    //   .then( results => {
+    //     console.log("🏦 results:", results)
+    //     setData(results);
+    //     setLoading(false);
+    //     setPagination({
+    //       ...params.pagination,
+    //       total: 10, //Need to fix this
+    //     });
+      // });
+  };
     
   // useEffect(() => {
   //   fetchData({

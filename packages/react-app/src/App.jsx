@@ -18,7 +18,6 @@ import {
   Select, 
   Space
 } from "antd";
-const { Header, Footer, Sider, Content } = Layout;
 import "antd/dist/antd.css";
 import Authereum from "authereum";
 import {
@@ -75,12 +74,11 @@ import { Transactor } from "./helpers";
 // contracts
 import externalContracts from "./contracts/external_contracts";
 import deployedContracts from "./contracts/hardhat_contracts.json";
-import { addContract } from "./contracts/modifyContracts";
 
 import logo from './logo/Trustor_name_white.png';
 import './index.css';
 
-
+const { Header, Footer, Sider, Content } = Layout;
 const { ethers } = require("ethers");
 
 /// 📡 What chain are your contracts deployed to?

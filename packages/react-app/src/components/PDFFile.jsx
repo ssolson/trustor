@@ -1,67 +1,88 @@
-import React from "react";
-import { Page, Text, Image, Document, StyleSheet } from "@react-pdf/renderer";
+import React, {useState, useEffect} from "react";
+// import { Page, Text, Image, Document, StyleSheet } from "@react-pdf/renderer";
+import {
+  Button,
+} from 'antd';
 import './PDFFile.css';
-
-const styles = StyleSheet.create({
-  body: {
-    paddingTop: 35,
-    paddingBottom: 65,
-    paddingHorizontal: 35,
-  },
-  title: {
-    fontSize: 24,
-    textAlign: "center",
-  },
-  text: {
-    margin: 12,
-    fontSize: 14,
-    textAlign: "justify",
-    fontFamily: "Times-Roman",
-  },
-  image: {
-    marginVertical: 15,
-    marginHorizontal: 100,
-  },
-  header: {
-    fontSize: 12,
-    marginBottom: 20,
-    textAlign: "center",
-    color: "grey",
-  },
-  pageNumber: {
-    position: "absolute",
-    fontSize: 12,
-    bottom: 30,
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    color: "grey",
-  },
-});
+import trustLang from '../templates/trustTemplate.json';
 
 
 
+
+// const clickHandler = () => {
+//   fetch('fileName')
+//   .then((r) => r.text())
+//   .then(text  => {
+//     console.log(text);
+//   })  
+// } 
+
+
+// const styles = StyleSheet.create({
+//   body: {
+//     paddingTop: 35,
+//     paddingBottom: 65,
+//     paddingHorizontal: 35,
+//   },
+//   title: {
+//     fontSize: 24,
+//     textAlign: "center",
+//   },
+//   text: {
+//     margin: 12,
+//     fontSize: 14,
+//     textAlign: "justify",
+//     fontFamily: "Times-Roman",
+//   },
+//   image: {
+//     marginVertical: 15,
+//     marginHorizontal: 100,
+//   },
+//   header: {
+//     fontSize: 12,
+//     marginBottom: 20,
+//     textAlign: "center",
+//     color: "grey",
+//   },
+//   pageNumber: {
+//     position: "absolute",
+//     fontSize: 12,
+//     bottom: 30,
+//     left: 0,
+//     right: 0,
+//     textAlign: "center",
+//     color: "grey",
+//   },
+// });
+
+
+
+
+
+
+
+
+// TODO: Get Data from Database
+const trustCreationDate = '05 September 2022'
+const trustName = 'Trust 1'
+
+// Must Define Database Values  first
 const DocumentComps = [
   {
     id: 0,
-    section: 0,
-    name: "Preface",
-    values: [
+    value: "Preface",
+    children: [
       {
         id: 1,
-        paragraph: 1,
-        name: `This is an express inter vivos trust 
+        value: `This is an express inter vivos trust 
           (i.e., revocable living trust), created this 
-          [X day, year], the terms of which are wholly 
+          ${trustCreationDate}, the terms of which are wholly 
           expressed in this instrument, except for those 
           incorporated by reference.`,
-        data: {date:'2022-08-23'},
-        subparagraph: []
       },
       {
         id: 2,
-        paragraph: 2,
-        name: `The form of delivery of this trust instrument
+        value: `The form of delivery of this trust instrument
           is known as a “smart contract,” which digitally instantiates 
           the terms of this trust instrument for global implementation 
           across all digital and cyber networks, platforms, and systems, 
@@ -69,76 +90,96 @@ const DocumentComps = [
           to this trust that is of either digital, physical, or of mixed 
           nature, regardless of medium or media wherein the trust property 
           manifests existence.`,
-        data: {},
-        subparagraph: []
       }
     ],
   },
   {
     id: 1,
-    section: 1,
-    name: "Article One",
-    values: [
+    value: "Article One",
+    children: [
       {
         id: 1,
-        paragraph: 1,
-        name: `For purposes of identification, this trust is referred to as [name].`,
-        data: {name:'jimmy'},
-        subparagraph: []
+        value: `For purposes of identification, this trust is referred to as ${trustName}.`,
       },
       {
         id: 2,
-        paragraph: 2,
-        name: `Grantor reserves the power to act on behalf of this trust without limitation, 
-          and may amend, restate, or revoke this trust at any time, for any purpose, in whole or 
-          in part by republication of this trust in writing, whether expressed digitally or otherwise, 
-          and irrespective of the form of language used for the purposes described in this section.`,
-        data: {},
-        subparagraph: []
+        value: `Grantor reserves the power to act on behalf of this
+          trust without limitation, and may amend, restate, or revoke 
+          this trust at any time, for any purpose, in whole or in part 
+          by republication of this trust in writing, whether expressed 
+          digitally or otherwise, and irrespective of the form of language
+          used for the purposes described in this section.`,
       },
       {
         id: 3,
-        paragraph: 3,
-        name: `Grantor may add or remove trust property at any time and for any purpose; Grantor retains 
-          fully the unrestricted right to direct and control the distribution of income and principal of the 
-          trust, up to and including exhausting all the trust property for the Grantor's benefit.`,
-        data: {},
-        subparagraph: []
+        value: `Grantor may add or remove trust property at any time 
+          and for any purpose; Grantor retains fully the unrestricted 
+          right to direct and control the distribution of income and 
+          principal of the trust, up to and including exhausting all 
+          the trust property for the Grantor's benefit.`,
       },
     ],
     }
   ];
   
 
-  function ListItem({ item }) {
-    let children = null;
-    if (item.values && item.values.length) {
-      children = (
-        <ol>
-          {item.values.map(i => (
-            <ListItem item={i} key={i.id} />
-          ))}
-        </ol>
-      );
-    }
-    return (
-      // <li>
-      // <li style={{listStyleType: "lower-alpha"}}>
-      <li className="ol">
-        {item.name}
-        {children}
-      </li>
+function ListItem({ item }) {
+  let children = null;
+  if (item.children && item.children.length) {
+    children = (
+      <ol>
+        {item.children.map(i => (
+          <ListItem item={i} key={i.id} />
+        ))}
+      </ol>
     );
   }
+  return (
+    <li className="ol">
+      {item.value}
+      {children}
+    </li>
+  );
+}
 
 
 
 
 export default function PDFFile(props) {
 
+  const [text, setText] = React.useState();
+
+  const clickHandler = () => {
+    // fetch(fileName)
+    //   .then((response) => response.text())
+    //   .then((textContent) => {
+    //     setText(textContent);
+    //   });
+    return text || "Loading...";
+    } 
+
   return (
     <div>
       <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+
+      <div>
+        <button onClick={clickHandler}>Click Here</button>
+      </div>
+      <div>
+      
+
+      <Button
+      type={"primary"}
+      onClick={
+        async () => {
+          console.log("You clicked the button!")
+          console.log("trustLang", trustLang['text'])
+        }
+      }
+    >  
+        Click it
+    </Button>
+    </div>
 
       <h1>THE TRUST</h1>      
       
