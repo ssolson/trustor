@@ -41,26 +41,36 @@ const getUserTrusts = async userSigner => {
       // let current_trust = {};
       if (trust_address != '_id') {
         // console.log(`${trust_address}: ${[value['role']]}`);
+        let userRoles = value['role'].map(role => 
+          getItem(
+            <Link to={`/trusts/${trust_address}/${role}`}>
+              {role}
+            </Link>,
+            `/trusts/${trust_address}/${role}`
+            )
+          )
+        let pdf = { 
+          'key': 'PDF',
+          'label': (
+            <Link to={`/trusts/${trust_address}/pdf`}> 
+              PDF
+            </Link>
+          ),
+        }
+        console.log("children?", [...userRoles,pdf])
+
         const current_trust= {
           'key': trust_address,
           'label': (
             <Link to={`/trusts/${trust_address}`}> 
               {trust_address.slice(0,5)+'...'+trust_address.substring(trust_address.length-4)}
             </Link>
-          ),
-          
-            children: value['role'].map(role => 
-              getItem(
-                <Link to={`/trusts/${trust_address}/${role}`}>
-                  {role}
-                </Link>,
-                `/trusts/${trust_address}/${role}`
-                )
-              )
-          ,
+          ),          
+          'children': [...userRoles,pdf],
         }
-
         trusts.push(current_trust);
+        console.log("trusts.children", trusts[0]['children']);
+
       }
       console.log("trusts", trusts);
     }

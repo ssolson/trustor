@@ -1,21 +1,13 @@
 import React, {useState, useEffect} from "react";
+import ReactMarkdown from 'react-markdown'
+import ReactDOM from 'react-dom'
 // import { Page, Text, Image, Document, StyleSheet } from "@react-pdf/renderer";
 import {
   Button,
 } from 'antd';
 import './PDFFile.css';
 import trustLang from '../templates/trustTemplate.json';
-
-
-
-
-// const clickHandler = () => {
-//   fetch('fileName')
-//   .then((r) => r.text())
-//   .then(text  => {
-//     console.log(text);
-//   })  
-// } 
+import trustMD from '../templates/eg/content/shortTrust.md';
 
 
 // const styles = StyleSheet.create({
@@ -148,6 +140,16 @@ function ListItem({ item }) {
 export default function PDFFile(props) {
 
   const [text, setText] = React.useState();
+  const TrustLanguage = trustLang['data'][0]['contents']
+
+
+  useEffect(() => {
+    fetch(trustMD)
+    .then(res => res.text())
+    .then(res => setText({ markdown: res }))
+    // .then(console.log(text));
+  }, [trustMD]);
+
 
   const clickHandler = () => {
     // fetch(fileName)
@@ -158,22 +160,27 @@ export default function PDFFile(props) {
     return text || "Loading...";
     } 
 
+
   return (
+    
     <div>
       <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
 
-      <div>
-        <button onClick={clickHandler}>Click Here</button>
-      </div>
-      <div>
-      
+      <h1>THE TRUST</h1>      
 
+      <ReactMarkdown children={text['markdown']}></ReactMarkdown>
+
+
+      
+      
+    <div>
       <Button
       type={"primary"}
       onClick={
         async () => {
-          console.log("You clicked the button!")
-          console.log("trustLang", trustLang['text'])
+          console.log("You clicked the button!");
+          console.log(text)
+          // console.log("trustLang", typeof  trustLang['data'][0]['contents'])
         }
       }
     >  
@@ -181,7 +188,6 @@ export default function PDFFile(props) {
     </Button>
     </div>
 
-      <h1>THE TRUST</h1>      
       
       <ol>
       {DocumentComps.map(i => (
@@ -211,26 +217,3 @@ export default function PDFFile(props) {
 };
 
 
-{/* <h1>Goal</h1>
-      
-<ol>
-<li>Element 1
-  <ol>
-    <li>Sub element 1</li>
-      <ol>
-      <li>Sub Sub element 1</li>
-      <li>Sub Sub element 2</li>
-      </ol>
-    <li>Sub element 2</li>
-    <li>Sub element 3</li>
-  </ol>
-</li>
-<li>Element 2</li>
-<li>Element 3
-  <ol>
-    <li>Sub element 1</li>
-    <li>Sub element 2</li>
-    <li>Sub element 3</li>
-  </ol>
-</li>
-</ol> */}
