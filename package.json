@@ -28,6 +28,7 @@
     "balance": "yarn workspace @scaffold-eth/hardhat balance",
     "verify": "yarn workspace @scaffold-eth/hardhat verify",
     "send": "yarn workspace @scaffold-eth/hardhat send",
+    "server": "yarn workspace @scaffold-eth/server server",
     "ipfs": "yarn workspace @scaffold-eth/react-app ipfs",
     "surge": "yarn workspace @scaffold-eth/react-app surge",
     "s3": "yarn workspace @scaffold-eth/react-app s3",
