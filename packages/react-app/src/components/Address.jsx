@@ -40,7 +40,7 @@ export default function Address(props) {
   const ens = useLookupAddress(props.ensProvider, address);
 
   // const { currentTheme } = useThemeSwitcher();
-  const currentTheme = 'dark';
+  const currentTheme = "dark";
 
   if (!address) {
     return (

@@ -55,7 +55,7 @@ export default function Account({
   isContract,
 }) {
   // const { currentTheme } = useThemeSwitcher();
-  const currentTheme ='dark';
+  const currentTheme = "dark";
 
   let accountButtonInfo;
   if (web3Modal?.cachedProvider) {

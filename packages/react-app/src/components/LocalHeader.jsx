@@ -5,13 +5,10 @@ import { Transactor } from "../helpers";
 const { Header } = Layout;
 const { ethers } = require("ethers");
 
-
-
 export default function LocalHeader(props) {
   const faucetTx = Transactor(props.localProvider, props.gasPrice);
 
   let faucetHint = "";
-
 
   const [faucetClicked, setFaucetClicked] = useState(false);
   if (
@@ -40,21 +37,21 @@ export default function LocalHeader(props) {
     );
   }
   return (
-    <Header style={{ position: 'fixed', zIndex: 1, width: '100%', }}>
+    <Header style={{ position: "fixed", zIndex: 1, width: "100%" }}>
       <div style={{ position: "fixed", zIndex: 2, textAlign: "right", right: 0, top: 0, padding: 10 }}>
-          <Account
-            address={props.address}
-            localProvider={props.localProvider}
-            userSigner={props.userSigner}
-            mainnetProvider={props.mainnetProvider}
-            price={props.price}
-            web3Modal={props.web3Modal}
-            loadWeb3Modal={props.loadWeb3Modal}
-            logoutOfWeb3Modal={props.logoutOfWeb3Modal}
-            blockExplorer={props.blockExplorer}
-          />
-          {faucetHint}
-        </div>
-  </Header>
+        <Account
+          address={props.address}
+          localProvider={props.localProvider}
+          userSigner={props.userSigner}
+          mainnetProvider={props.mainnetProvider}
+          price={props.price}
+          web3Modal={props.web3Modal}
+          loadWeb3Modal={props.loadWeb3Modal}
+          logoutOfWeb3Modal={props.logoutOfWeb3Modal}
+          blockExplorer={props.blockExplorer}
+        />
+        {faucetHint}
+      </div>
+    </Header>
   );
 }

@@ -1,22 +1,22 @@
 import Portis from "@portis/web3";
 import WalletConnectProvider from "@walletconnect/web3-provider";
-import { 
-  Alert, 
-  Button, 
-  Card, 
-  Col, 
-  Divider, 
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Divider,
   Row,
-  Input, 
-  List, 
-  Menu,  
-  Table, 
-  Tag, 
-  Breadcrumb, 
+  Input,
+  List,
+  Menu,
+  Table,
+  Tag,
+  Breadcrumb,
   Layout,
-  Form, 
-  Select, 
-  Space
+  Form,
+  Select,
+  Space,
 } from "antd";
 import "antd/dist/antd.css";
 import Authereum from "authereum";
@@ -37,26 +37,10 @@ import { BrowserRouter, Link, Routes, Route } from "react-router-dom";
 import WalletLink from "walletlink";
 import Web3Modal from "web3modal";
 // import "./App.css";
-import {
-  Account,
-  Address,
-  AddressInput,
-  Balance,
-  Contract,
-  Faucet,
-  GasGauge,
-  LocalHeader,
-  Ramp,
-  ThemeSwitch,
-  GrantorTable,
-  TrusteeTable,
-  BeneficiaryTable,
-  SideBar,
-  PDFFile
-} from "./components";
+import { Contract, LocalHeader, SideBar, PDFFile } from "./components";
 import { AddGrantor, ReleaseAssets } from "./components/ContractFunctions";
 import {
-  HomePage, 
+  HomePage,
   FavoritesPage,
   NewTrustPage,
   TrustOverviewPage,
@@ -66,7 +50,7 @@ import {
   DebugContractsPage,
   AllTrustsPage,
   Trust0xOverviewPage,
-  TrustList
+  TrustList,
 } from "./pages";
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
@@ -75,8 +59,8 @@ import { Transactor } from "./helpers";
 import externalContracts from "./contracts/external_contracts";
 import deployedContracts from "./contracts/hardhat_contracts.json";
 
-import logo from './logo/Trustor_name_white.png';
-import './index.css';
+import logo from "./logo/Trustor_name_white.png";
+import "./index.css";
 
 const { Header, Footer, Sider, Content } = Layout;
 const { ethers } = require("ethers");
@@ -124,18 +108,15 @@ const walletLink = new WalletLink({
 });
 
 // WalletLink provider
-const walletLinkProvider = walletLink.makeWeb3Provider(
-  `https://mainnet.infura.io/v3/${INFURA_ID}`, 
-  1
-);
+const walletLinkProvider = walletLink.makeWeb3Provider(`https://mainnet.infura.io/v3/${INFURA_ID}`, 1);
 
 /*
   Web3 modal helps us "connect" external wallets:
 */
 const web3Modal = new Web3Modal({
-  network: "mainnet", 
-  cacheProvider: true, 
-  theme: "light", 
+  network: "mainnet",
+  cacheProvider: true,
+  theme: "light",
   providerOptions: {
     walletconnect: {
       package: WalletConnectProvider, // required
@@ -184,15 +165,11 @@ const web3Modal = new Web3Modal({
   },
 });
 
-
-
 function App(props) {
   const mainnetProvider =
     // poktMainnetProvider && poktMainnetProvider._isProvider
     //   ? poktMainnetProvider
-      scaffoldEthProvider && scaffoldEthProvider._network
-      ? scaffoldEthProvider
-      : mainnetInfura;
+    scaffoldEthProvider && scaffoldEthProvider._network ? scaffoldEthProvider : mainnetInfura;
 
   const [injectedProvider, setInjectedProvider] = useState();
   const [address, setAddress] = useState();
@@ -242,11 +219,9 @@ function App(props) {
   // 🏗 scaffold-eth is full of handy hooks like this one to get your balance:
   const yourLocalBalance = useBalance(localProvider, address);
 
-  
-
-  const contractConfig = { 
-    deployedContracts: deployedContracts || {}, 
-    externalContracts: externalContracts || {} 
+  const contractConfig = {
+    deployedContracts: deployedContracts || {},
+    externalContracts: externalContracts || {},
   };
 
   // Load in your local 📝 contract and read a value from it:
@@ -263,7 +238,6 @@ function App(props) {
 
   const trustETHBalance = useBalance(localProvider, trustAddress);
   if (DEBUG) console.log("💵 trustETHBalance", trustETHBalance ? ethers.utils.formatEther(trustETHBalance) : "...");
-
 
   // 🧫 DEBUG 👨🏻‍🔬
   useEffect(() => {
@@ -286,15 +260,7 @@ function App(props) {
       console.log("🔐 writeContracts", writeContracts);
       console.log("SIMPLET: ", readContracts.SimpleT);
     }
-  }, [
-    mainnetProvider,
-    address,
-    selectedChainId,
-    yourLocalBalance,
-    readContracts,
-    writeContracts,
-    mainnetContracts,
-  ]);
+  }, [mainnetProvider, address, selectedChainId, yourLocalBalance, readContracts, writeContracts, mainnetContracts]);
 
   let networkDisplay = "";
   if (NETWORKCHECK && localChainId && selectedChainId && localChainId !== selectedChainId) {
@@ -408,21 +374,15 @@ function App(props) {
     }
   }, [loadWeb3Modal]);
 
-
   const [collapsed, setCollapsed] = useState(false);
-
-
 
   return (
     <div className="App">
       <BrowserRouter>
-        <Layout style={{ minHeight: '100vh', }}>
-          <Sider collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)}>
+        <Layout style={{ minHeight: "100vh" }}>
+          <Sider collapsible collapsed={collapsed} onCollapse={value => setCollapsed(value)}>
             <img src={logo} className="logo" />
-            <SideBar 
-              userSigner={userSigner}
-              address={address}
-            />
+            <SideBar userSigner={userSigner} address={address} />
           </Sider>
           <Layout className="site-layout">
             <LocalHeader
@@ -436,99 +396,93 @@ function App(props) {
               loadWeb3Modal={loadWeb3Modal}
               logoutOfWeb3Modal={logoutOfWeb3Modal}
               blockExplorer={blockExplorer}
+            />
 
-              // address={address}
-              // localProvider={localProvider}
-              // userSigner={userSigner}
-              // mainnetProvider={mainnetProvider}
-              // price={price}
-              // web3Modal={web3Modal}
-              // loadWeb3Modal={loadWeb3Modal}
-              // logoutOfWeb3Modal={logoutOfWeb3Modal}
-              // blockExplorer={blockExplorer}
-              // targetNetwork={targetNetwork}
-              // gasPrice={gasPrice}
-              />
-            
-            <Content style={{padding: '0 50px',}}>
+            <Content style={{ padding: "0 50px" }}>
               <div className="site-layout-content">
                 <Routes>
                   <Route path="/" exact element={<HomePage />} />
-                  <Route exact path="/trusts" element={
-                    <TrustList 
-                    localProvider={localProvider}
-                    contractConfig={contractConfig}
-                    readContracts={readContracts} 
-                    userSigner={userSigner}
-                    localChainId={localChainId}
-                    address={address}
-                    />} 
+                  <Route
+                    exact
+                    path="/trusts"
+                    element={
+                      <TrustList
+                        localProvider={localProvider}
+                        contractConfig={contractConfig}
+                        readContracts={readContracts}
+                        userSigner={userSigner}
+                        localChainId={localChainId}
+                        address={address}
+                      />
+                    }
                   />
                   {/* <Route path="/trusts/edit/:id" element={<Edit />} /> */}
 
-                  <Route path="/trusts/new" exact element={
-                    <NewTrustPage 
-                    localProvider={localProvider}
-                    contractConfig={contractConfig}
-                    readContracts={readContracts} 
-                    userSigner={userSigner}
-                    localChainId={localChainId}
-                    address={address}
-                    />} 
-                  />
-                  <Route path="/trust" exact element={
-                    <AllTrustsPage />} 
-                  />
-                  <Route 
-                    path="/trusts/:trustAddress" exact 
+                  <Route
+                    path="/trusts/new"
+                    exact
                     element={
-                      <Trust0xOverviewPage 
+                      <NewTrustPage
                         localProvider={localProvider}
                         contractConfig={contractConfig}
-                        readContracts={readContracts} 
+                        readContracts={readContracts}
                         userSigner={userSigner}
                         localChainId={localChainId}
                         address={address}
                       />
-                    } 
+                    }
                   />
- 
- <Route 
-                    path="/trusts/:trustAddress/pdf" exact 
+                  <Route path="/trust" exact element={<AllTrustsPage />} />
+                  <Route
+                    path="/trusts/:trustAddress"
+                    exact
                     element={
-                      <PDFFile 
+                      <Trust0xOverviewPage
                         localProvider={localProvider}
                         contractConfig={contractConfig}
-                        readContracts={readContracts} 
+                        readContracts={readContracts}
                         userSigner={userSigner}
                         localChainId={localChainId}
                         address={address}
                       />
-                    } 
+                    }
                   />
 
-                  <Route exact path="/trusts/:trustAddress/grantor" element={
-                    <GrantorAdminPage 
-                      readContracts={readContracts} 
-                      writeContracts={writeContracts}
-                      tx={tx}
-                    />} 
+                  <Route
+                    path="/trusts/:trustAddress/pdf"
+                    exact
+                    element={
+                      <PDFFile
+                        localProvider={localProvider}
+                        contractConfig={contractConfig}
+                        readContracts={readContracts}
+                        userSigner={userSigner}
+                        localChainId={localChainId}
+                        address={address}
+                      />
+                    }
                   />
-                  
-                  <Route exact path="/grantor/approve" element={
-                    <GrantorApprovePage 
-                      readContracts={readContracts} 
-                      writeContracts={writeContracts}
-                      tx={tx}
-                    />}
+
+                  <Route
+                    exact
+                    path="/trusts/:trustAddress/grantor"
+                    element={<GrantorAdminPage readContracts={readContracts} writeContracts={writeContracts} tx={tx} />}
+                  />
+
+                  <Route
+                    exact
+                    path="/grantor/approve"
+                    element={
+                      <GrantorApprovePage readContracts={readContracts} writeContracts={writeContracts} tx={tx} />
+                    }
                   />
 
                   <Route exact path="/trustee/overview">
-                  {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
+                    {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
                   <h1> Trustees </h1>
                     <TrusteeTable readContracts={readContracts} /> */}
                   </Route>
-                  
+
                   <Route exact path="/trustee/administer">
                     {/* <div style={{ padding: 25, marginTop: 50, width: 400, margin: "auto" }}/>
                     <Card title="Release Assets to Beneficiaries" extra={<a href="#">code</a>}>                
@@ -545,49 +499,49 @@ function App(props) {
                           </Button>  
                         </div>
                       </Card> */}
-                    
                   </Route>
 
-
-                  <Route path="/contracts" element={
-                    <DebugContractsPage
-                      address={address}
-                      localProvider={localProvider}
-                      userSigner={userSigner}
-                      mainnetProvider={mainnetProvider}
-                      price={price}
-                      web3Modal={web3Modal}
-                      loadWeb3Modal={loadWeb3Modal}
-                      logoutOfWeb3Modal={logoutOfWeb3Modal}
-                      blockExplorer={blockExplorer}
-                      targetNetwork={targetNetwork}
-                      gasPrice={gasPrice}
-                      NETWORKS={NETWORKS}
-                      contractConfig={contractConfig}
-                    />}
-                  />   
-                  <Route 
-                    path="/mainnetdai" 
+                  <Route
+                    path="/contracts"
+                    element={
+                      <DebugContractsPage
+                        address={address}
+                        localProvider={localProvider}
+                        userSigner={userSigner}
+                        mainnetProvider={mainnetProvider}
+                        price={price}
+                        web3Modal={web3Modal}
+                        loadWeb3Modal={loadWeb3Modal}
+                        logoutOfWeb3Modal={logoutOfWeb3Modal}
+                        blockExplorer={blockExplorer}
+                        targetNetwork={targetNetwork}
+                        gasPrice={gasPrice}
+                        NETWORKS={NETWORKS}
+                        contractConfig={contractConfig}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/mainnetdai"
                     element={
                       <Contract
                         name="DAI"
-                        customContract={mainnetContracts && mainnetContracts.contracts && mainnetContracts.contracts.DAI}
+                        customContract={
+                          mainnetContracts && mainnetContracts.contracts && mainnetContracts.contracts.DAI
+                        }
                         signer={userSigner}
                         provider={mainnetProvider}
                         address={address}
                         blockExplorer="https://etherscan.io/"
                         contractConfig={contractConfig}
-                        chainId={1}                  
-                      />      
-                    } 
-                  />    
+                        chainId={1}
+                      />
+                    }
+                  />
                 </Routes>
               </div>
             </Content>
-            <Footer style={{textAlign: 'center',}}>
-              Trustor Digital ©2022
-            </Footer>
-
+            <Footer style={{ textAlign: "center" }}>Trustor Digital ©2022</Footer>
           </Layout>
         </Layout>
       </BrowserRouter>

@@ -19,7 +19,7 @@ const ExecuteFunction = ({ contractFunction, functionInfo, refreshRequired, trig
     refresh();
   }, [refresh, refreshRequired, contractFunction]);
 
-  console.log(variable)
+  console.log(variable);
   return (
     <div>
       <Row>

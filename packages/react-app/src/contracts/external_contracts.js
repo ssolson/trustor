@@ -789,10 +789,6 @@ const DAIABI = [
   },
 ];
 
-
-
-
-
 // Mainnet DAI, Optimism and Arbitrium Rollup Contracts with local addresses
 module.exports = {
   1: {

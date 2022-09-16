@@ -1,30 +1,20 @@
-
 import React from "react";
-import {  
-  Col, 
-  Row,
-} from "antd";
-import { 
-  Contract, 
-  Ramp, 
-  GasGauge,
-  Faucet 
-} from "../components";
-
+import { Col, Row } from "antd";
+import { Contract, Ramp, GasGauge, Faucet } from "../components";
 
 export default function DebugContractsPage(props) {
-  const faucetAvailable = props.localProvider && props.localProvider.connection && 
-    props.targetNetwork.name.indexOf("local") !== -1;
+  const faucetAvailable =
+    props.localProvider && props.localProvider.connection && props.targetNetwork.name.indexOf("local") !== -1;
   return (
     <div>
       <Contract
-          name="SimpleT"
-          signer={props.userSigner}
-          provider={props.localProvider}
-          address={props.address}
-          blockExplorer={props.blockExplorer}
-          contractConfig={props.contractConfig}
-        />
+        name="SimpleT"
+        signer={props.userSigner}
+        provider={props.localProvider}
+        address={props.address}
+        blockExplorer={props.blockExplorer}
+        contractConfig={props.contractConfig}
+      />
       <div style={{ position: "fixed", textAlign: "left", left: 100, bottom: 20, padding: 10 }}>
         <Row align="middle" gutter={[3, 3]}>
           <Col span={12}>
@@ -38,18 +28,14 @@ export default function DebugContractsPage(props) {
 
         <Row align="middle" gutter={[4, 4]}>
           <Col span={24}>
-            {
-              faucetAvailable ? (
-                <Faucet 
-                  localProvider={props.localProvider} 
-                  price={props.price} 
-                  ensProvider={props.mainnetProvider} 
-                />
-              ) : ("")
-            }
+            {faucetAvailable ? (
+              <Faucet localProvider={props.localProvider} price={props.price} ensProvider={props.mainnetProvider} />
+            ) : (
+              ""
+            )}
           </Col>
         </Row>
       </div>
     </div>
-  )
+  );
 }

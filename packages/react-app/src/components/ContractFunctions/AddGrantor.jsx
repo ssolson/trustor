@@ -1,4 +1,3 @@
-
 export default async function AddGrantor(tx, writeContracts, newGrantorAddr) {
   console.log("ayyye you pushed the button");
 
@@ -19,13 +18,8 @@ export default async function AddGrantor(tx, writeContracts, newGrantorAddr) {
       }
     });
     console.log("awaiting metamask/web3 confirm result...", result);
-    console.log(await result);;
-  }
+    console.log(await result);
+  };
 
-  return  res
+  return res;
 }
-
-
-
-
-
