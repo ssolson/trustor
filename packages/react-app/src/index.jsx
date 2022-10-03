@@ -5,12 +5,10 @@ import ReactDOM from "react-dom";
 import App from "./App";
 import "./index.css";
 
-const markdown = `A paragraph with *emphasis* and **strong importance**.`;
-
-const themes = {
-  dark: `${process.env.PUBLIC_URL}/dark-theme.css`,
-  light: `${process.env.PUBLIC_URL}/light-theme.css`,
-};
+// const themes = {
+//   dark: `${process.env.PUBLIC_URL}/dark-theme.css`,
+//   light: `${process.env.PUBLIC_URL}/light-theme.css`,
+// };
 
 const prevTheme = window.localStorage.getItem("theme");
 
