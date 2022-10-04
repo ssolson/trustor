@@ -1,4 +1,4 @@
-pragma solidity 0.8.14;
+pragma solidity 0.8.17;
 // SPDX-License-Identifier: MIT
 
 import "./Roles.sol";
@@ -10,7 +10,7 @@ abstract contract Beneficiary is Roles {
     event BeneficiaryAdded(address account, uint256 shares);
     event AssetsReleased(address to, uint256 amount);
     event AssetsReceived(address from, uint256 amount);
-        
+
     uint256 private _totalShares;
 
     mapping(address => uint256) public _shares;
@@ -32,19 +32,17 @@ abstract contract Beneficiary is Roles {
         return _shares[_addr];
     }
 
-
     /**
-    * @dev Trustee will finalize beneficiary addresses.
-    * @param _beneficiaries ordered array addresses of the beneficiary.
-    * @param shares_ ordered array of shares associated with the beneficiary.
-    */  
-    function setBeneficiaries(        
-        address[] memory  _beneficiaries, 
-        uint256[] memory shares_) 
-        public onlyRole(GRANTOR_ADMIN_ROLE)
-     {
-        // require(checkin is open);    
-        
+     * @dev Trustee will finalize beneficiary addresses.
+     * @param _beneficiaries ordered array addresses of the beneficiary.
+     * @param shares_ ordered array of shares associated with the beneficiary.
+     */
+    function setBeneficiaries(
+        address[] memory _beneficiaries,
+        uint256[] memory shares_
+    ) public onlyRole(GRANTOR_ADMIN_ROLE) {
+        // require(checkin is open);
+
         require(
             _beneficiaries.length > 0,
             "Beneficiary: At least 1 beneficiary must be specified."
@@ -52,9 +50,9 @@ abstract contract Beneficiary is Roles {
 
         require(
             _beneficiaries.length == shares_.length,
-            "Beneficiary: Must specify the same number of beneficiaries and shares."
-        );   
-        
+            "Beneficiary: beneficiaries and shares mush have equal length."
+        );
+
         _resetBeneficiaries();
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
@@ -62,16 +60,21 @@ abstract contract Beneficiary is Roles {
         }
     }
 
-
     /**
      * @dev Add a new payee to the contract.
      * @param account The address of the payee to add.
      * @param shares_ The number of shares owned by the payee.
      */
     function _addBeneficiary(address account, uint256 shares_) private {
-        require(account != address(0), "Beneficiary: account is the zero address");
+        require(
+            account != address(0),
+            "Beneficiary: account is the zero address"
+        );
         require(shares_ > 0, "Beneficiary: shares are 0");
-        require(_shares[account] == 0, "Beneficiary: account already has shares");
+        require(
+            _shares[account] == 0,
+            "Beneficiary: account already has shares"
+        );
 
         beneficiaries.push(account);
         grantRole(BENEFICIARY_ROLE, account);
@@ -93,5 +96,4 @@ abstract contract Beneficiary is Roles {
         delete beneficiaries;
         _totalShares = 0;
     }
-
 }
