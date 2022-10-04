@@ -5,7 +5,7 @@
       "chainId": "31337",
       "contracts": {
         "SimpleT": {
-          "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+          "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
           "abi": [
             {
               "inputs": [
@@ -21,7 +21,7 @@
                 },
                 {
                   "internalType": "address",
-                  "name": "_initial_trustee",
+                  "name": "_initialTrustee",
                   "type": "address"
                 },
                 {
@@ -488,12 +488,77 @@
             },
             {
               "inputs": [],
+              "name": "INITIAL_TRUSTEE_ROLE",
+              "outputs": [
+                {
+                  "internalType": "bytes32",
+                  "name": "",
+                  "type": "bytes32"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "SECONDS_IN_30_DAYS",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "SUCCESSOR_TRUSTEE_ROLE",
+              "outputs": [
+                {
+                  "internalType": "bytes32",
+                  "name": "",
+                  "type": "bytes32"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "TOKENS_PER_GRANTOR",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
               "name": "TRUSTEE_ROLE",
               "outputs": [
                 {
                   "internalType": "bytes32",
                   "name": "",
                   "type": "bytes32"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "VERSION",
+              "outputs": [
+                {
+                  "internalType": "string",
+                  "name": "",
+                  "type": "string"
                 }
               ],
               "stateMutability": "view",
@@ -526,7 +591,7 @@
                   "type": "address"
                 }
               ],
-              "name": "_token_ids",
+              "name": "_tokenIds",
               "outputs": [
                 {
                   "internalType": "uint256",
@@ -1169,19 +1234,6 @@
               "type": "function"
             },
             {
-              "inputs": [],
-              "name": "secondsIn30Days",
-              "outputs": [
-                {
-                  "internalType": "uint256",
-                  "name": "",
-                  "type": "uint256"
-                }
-              ],
-              "stateMutability": "view",
-              "type": "function"
-            },
-            {
               "inputs": [
                 {
                   "internalType": "address",
@@ -1264,19 +1316,6 @@
             },
             {
               "inputs": [],
-              "name": "tokensPerGrantor",
-              "outputs": [
-                {
-                  "internalType": "uint256",
-                  "name": "",
-                  "type": "uint256"
-                }
-              ],
-              "stateMutability": "view",
-              "type": "function"
-            },
-            {
-              "inputs": [],
               "name": "trustEnd",
               "outputs": [
                 {
@@ -1325,23 +1364,6 @@
               ],
               "stateMutability": "view",
               "type": "function"
-            },
-            {
-              "inputs": [],
-              "name": "version",
-              "outputs": [
-                {
-                  "internalType": "string",
-                  "name": "",
-                  "type": "string"
-                }
-              ],
-              "stateMutability": "view",
-              "type": "function"
-            },
-            {
-              "stateMutability": "payable",
-              "type": "receive"
             }
           ]
         }
