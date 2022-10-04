@@ -230,16 +230,7 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.8.14",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.6.7",
+        version: "0.8.17",
         settings: {
           optimizer: {
             enabled: true,
@@ -257,9 +248,9 @@ module.exports = {
       default: 0, // here this will by default take the first account as deployer
     },
   },
-  etherscan: {    
-    // apiKey: "DNXJA8RX2Q3VZ4URQIWP7Z68CJXQZSC6AW", 
-    apiKey: "RQD26QHHW5EMGRK4BCPTMU22576IU17FVA", 
+  etherscan: {
+    // apiKey: "DNXJA8RX2Q3VZ4URQIWP7Z68CJXQZSC6AW",
+    apiKey: "RQD26QHHW5EMGRK4BCPTMU22576IU17FVA",
   },
 };
 
