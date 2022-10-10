@@ -10,7 +10,7 @@ import "./Beneficiary.sol";
 /// @notice Contract will allow for simple asset transfers
 contract SimpleT is Beneficiary, Trustee, Grantor {
     event CkeckIn(address owner, uint256 newStart, uint256 newEnd);
-    event PeriodSet(address owner, uint256 newPeriod);
+    event PeriodSet(address owner, uint128 newPeriod);
 
     string public constant VERSION = "0.1.0";
 
@@ -46,58 +46,58 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
     /// @dev the trust will transfer to Trustees after this period of time
     uint256 public trustEnd;
 
-    // ADD SUCCESSOR TRUSTEE AT INSTANTIATION
     constructor(
         string memory _name,
-        address _grantor,
         address _initialTrustee,
+        uint128 _checkInPeriod,
+        address[] memory _grantors,
+        address[] memory _successorTrustees,
+        uint256[] memory _successorTrusteePositions,
+        uint256 _successorTrusteePeriod,
         address[] memory _beneficiaries,
-        uint256[] memory _percentages
+        uint256[] memory _beneficiaryPercentages
     ) {
         // Set Trust Name
         name = _name;
         // Trust is initialized at deployment
         initializedTrust = block.timestamp;
         checkInPeriodStart = block.timestamp;
-        periods = 12;
+        periods = _checkInPeriod;
         checkInPeriodEnd = checkInPeriodStart + periods * SECONDS_IN_30_DAYS;
         trustEnd = checkInPeriodEnd;
 
         assetsReleased = false;
 
         // Set Role Admins
-        _setRoleAdmin(GRANTOR_ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
-        _setRoleAdmin(GRANTOR_ROLE, GRANTOR_ADMIN_ROLE);
-        _setRoleAdmin(TRUSTEE_ROLE, GRANTOR_ADMIN_ROLE);
-        _setRoleAdmin(BENEFICIARY_ROLE, GRANTOR_ADMIN_ROLE);
+        _setRoleAdmin(INITIAL_TRUSTEE_ROLE, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(TRUSTEE_ROLE, INITIAL_TRUSTEE_ROLE);
+        _setRoleAdmin(BENEFICIARY_ROLE, INITIAL_TRUSTEE_ROLE);
 
-        // Assign address to roles
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(GRANTOR_ADMIN_ROLE, msg.sender);
-        _setupRole(GRANTOR_ROLE, msg.sender);
-        _setupRole(TRUSTEE_ROLE, _initialTrustee);
+        // Initialize roles
+        _setupRole(DEFAULT_ADMIN_ROLE, _initialTrustee);
+        _setupRole(INITIAL_TRUSTEE_ROLE, msg.sender);
 
-        // Assign beneficiaries
-        addGrantor(_grantor);
-        addTrustee(_initialTrustee);
-        setBeneficiaries(_beneficiaries, _percentages);
+        // Setup Trust
+        setInitialTrustee(_initialTrustee);
+        setPeriods(_checkInPeriod);
+        addGrantors(_grantors);
+        addSuccessorTrustees(_successorTrustees);
+        addSuccessorTrustee(_initialTrustee);
+        setBeneficiaries(_beneficiaries, _beneficiaryPercentages);
 
-        if (msg.sender != _grantor) {
-            grantRole(DEFAULT_ADMIN_ROLE, _grantor);
-            grantRole(GRANTOR_ADMIN_ROLE, _grantor);
-            grantRole(GRANTOR_ROLE, _grantor);
-            revokeRole(GRANTOR_ROLE, msg.sender);
-            revokeRole(GRANTOR_ADMIN_ROLE, msg.sender);
+        if (msg.sender != _initialTrustee) {
+            grantRole(DEFAULT_ADMIN_ROLE, _initialTrustee);
+            grantRole(INITIAL_TRUSTEE_ROLE, _initialTrustee);
+            revokeRole(INITIAL_TRUSTEE_ROLE, msg.sender);
             revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
         }
     }
 
-    // receive() external payable {}
 
     /**
      * @notice Set Period in months. Must be at least 1 month and at most 12 months.
      */
-    function setPeriods(uint128 newPeriod) external onlyRole(GRANTOR_ROLE) {
+    function setPeriods(uint128 newPeriod) public onlyRole(INITIAL_TRUSTEE_ROLE) {
         require(newPeriod >= 1, "New period must be an integer greater than 0");
         require(newPeriod <= 12, "New period must be an integer less than 13");
         periods = newPeriod;
@@ -138,13 +138,7 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
             amounts[i] = TOKENS_PER_GRANTOR;
         }
 
-        _safeBatchTransferFrom(
-            address(this),
-            msg.sender,
-            token_ids,
-            amounts,
-            ""
-        );
+        _safeBatchTransferFrom(address(this), msg.sender, tokenIds, amounts, "");
     }
 
     /// @dev returns array of addresses with active stakers

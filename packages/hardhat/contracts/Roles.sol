@@ -9,35 +9,47 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 /// @author sters.eth
 /// @notice Contract defines roles and ERC1155
 abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
-    /// @dev GRANTOR_ADMIN Controls trust while checkin is live
-    bytes32 public constant GRANTOR_ADMIN_ROLE =
-        keccak256("GRANTOR_ADMIN_ROLE");
+    /** 
+    @dev GRANTOR_ADMIN_ROLE serves as a backup to the INITIAL_TRUSTEE_ROLE
+    */
+    // bytes32 public constant GRANTOR_ADMIN_ROLE = keccak256("GRANTOR_ADMIN_ROLE");
 
     /**  
     @dev GRANTOR_ROLE can perform grantor functions the grantor can add or 
-      revoke right, title, and intrest
-     */
+      revoke right, title, and intrest.
+    */
     bytes32 public constant GRANTOR_ROLE = keccak256("GRANTOR_ROLE");
 
-    /// @dev INITIAL_TRUSTEE_ROLE modify the trust on the Grantor's behalf
-    bytes32 public constant INITIAL_TRUSTEE_ROLE =
-        keccak256("INITIAL_TRUSTEE_ROLE");
+    /**  
+    @dev INITIAL_TRUSTEE_ROLE
+      The person that creates the family trust is called the grantor or 
+      trustor. In a typical arrangement, the grantor is also the initial trustee. 
+      Wallets with this role may adjust the terms of the trust.
+    */
+    bytes32 public constant INITIAL_TRUSTEE_ROLE = keccak256("INITIAL_TRUSTEE_ROLE");
 
     /** 
      @dev SUCCESSOR_TRUSTEE_ROLE 
       The Successor Trustee is the person or institution who takes over the 
-      management of a living trust property when the original trustee has
+      management of a living trust property when the initial trustee has
       died or become incapacitated. The exact responsibilities of a successor 
       trustee will vary depending on the instructions left by the creator of 
       the trust (called the Grantor).
-     */
-    bytes32 public constant SUCCESSOR_TRUSTEE_ROLE =
-        keccak256("SUCCESSOR_TRUSTEE_ROLE");
+    */
+    bytes32 public constant SUCCESSOR_TRUSTEE_ROLE = keccak256("SUCCESSOR_TRUSTEE_ROLE");
 
-    /// @dev TRUSTEE_ROLE may execute the trust
+    /**  
+    @dev TRUSTEE_ROLE may execute the trust 
+    The TRUSTEE_ROLE is selected from the list of SUCCESOR_TRUSTEES. The 
+    TRUSTEE_ROLE serves as the active trustee and may perform actions on 
+    following the initial Trustees death.
+    */
     bytes32 public constant TRUSTEE_ROLE = keccak256("TRUSTEE_ROLE");
 
-    /// @dev BENEFICIARY_ROLE may recieve assets from trust
+    /**  
+    @dev BENEFICIARY_ROLE represents the individual or group of individuals 
+    for whom a trust is created. Asset allocations are defined in the trust.
+    */
     bytes32 public constant BENEFICIARY_ROLE = keccak256("BENEFICIARY_ROLE");
 
     constructor() ERC1155("") {}

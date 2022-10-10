@@ -7,25 +7,63 @@ import "./Roles.sol";
 /// @author sters.eth
 /// @notice Contract conntains Trustee functions
 abstract contract Trustee is Roles {
+    /**  @dev Inital trustee */
+    address public trustee;
+
     /**  @dev Array of trustees */
     address[] public trustees;
 
-    event AddedTrustee(address owner, address trusteeAddress);
+    /**  @dev The number of periods after each checkin */
+    uint128 public successorTrusteePeriod;
+
+    event SetInitialTrustee(address owner, address trusteeAddress);
+    event AddedSccessorTrustee(address owner, address trusteeAddress);
     event RemovedTrustee(address owner, address trusteeAddress);
     event ResetTrustees(address owner);
+    event successorTrusteePeriodSet(address owner, uint128 newPeriod);
+
+
+    /**
+     * @dev ADMIN may set initial Trustee.
+     * @param initialTrusteeAddress address of trustee.
+     */
+    function setInitialTrustee(address initialTrusteeAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(initialTrusteeAddress != address(0), "address can not be zero address");
+        // TODO: If not null revoke role         
+        trustee = initialTrusteeAddress;
+        grantRole(INITIAL_TRUSTEE_ROLE, initialTrusteeAddress);
+        emit SetInitialTrustee(msg.sender, initialTrusteeAddress);
+    }
+
+
+    function addSuccessorTrustees(address[] memory trusteeAddresses) public onlyRole(INITIAL_TRUSTEE_ROLE) {
+        for (uint256 idx = 0; idx < trusteeAddresses.length; idx++) {
+            addSuccessorTrustee(trusteeAddresses[idx]);
+        }
+    }
 
     /**
      * @dev Owner may add addresses as Trustees.
      * @param trusteeAddress address of trustee.
      */
-    function addTrustee(address trusteeAddress) public onlyRole(GRANTOR_ROLE) {
-        require(
-            trusteeAddress != address(0),
-            "address can not be zero address"
-        );
+    function addSuccessorTrustee(address trusteeAddress) public onlyRole(INITIAL_TRUSTEE_ROLE) {
+        require(trusteeAddress != address(0), "address can not be zero address");
         trustees.push(trusteeAddress);
-        emit AddedTrustee(msg.sender, trusteeAddress);
+        grantRole(SUCCESSOR_TRUSTEE_ROLE, trusteeAddress);
+        emit AddedSccessorTrustee(msg.sender, trusteeAddress);
     }
+
+
+    /**
+     * @notice Set Period in weeks between succsor trustees
+     */
+    function setSuccessorPeriod(uint128 newPeriod) public onlyRole(INITIAL_TRUSTEE_ROLE) {
+        require(newPeriod >= 1, "New period must be an integer greater than 0");
+        require(newPeriod <= 36, "New period must be an integer less than 36");
+        successorTrusteePeriod = newPeriod;
+        emit successorTrusteePeriodSet(msg.sender, newPeriod);
+    }
+
 
     /**
      * @dev Owner may remove an address from Trustees.
@@ -37,11 +75,8 @@ abstract contract Trustee is Roles {
      * state the date of removal.
      * @param trusteeAddress address of trustee.
      */
-    function removeTrustee(address trusteeAddress)
-        external
-        onlyRole(GRANTOR_ROLE)
-    {
-        // REMOVES TRUSTEE ROLE
+    function removeTrustee(address trusteeAddress) external onlyRole(INITIAL_TRUSTEE_ROLE) {
+        // TODO: REMOVE TRUSTEE ROLE
         for (uint256 idx = 0; idx < trustees.length; idx++) {
             if (trusteeAddress == trustees[idx]) {
                 if (trustees.length == 1) {
@@ -56,7 +91,7 @@ abstract contract Trustee is Roles {
     }
 
     /// @dev deletes all address from trustees
-    function resetTrustees() public onlyRole(GRANTOR_ROLE) {
+    function resetTrustees() public onlyRole(INITIAL_TRUSTEE_ROLE) {
         delete trustees;
         emit ResetTrustees(msg.sender);
     }

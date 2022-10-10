@@ -27,17 +27,23 @@ abstract contract Grantor is Roles {
     uint256 public constant TOKENS_PER_GRANTOR = 1000000000000000000;
 
     /**
+     * @dev Owner may remove an address from grantor array.
+     * @param _grantorAddresses address of trustee.
+     */
+    function addGrantors(address[] memory _grantorAddresses) public onlyRole(INITIAL_TRUSTEE_ROLE) {
+        // Adds GRANTOR ROLE
+        for (uint256 idx = 0; idx < _grantorAddresses.length; idx++) {
+            addGrantor(_grantorAddresses[idx]);
+        }
+    }
+
+    /**
      * @dev Owner may add an addresses with owned assets.
      * @param _grantorAddress address of grantor.
      */
-    function addGrantor(address _grantorAddress)
-        public
-        onlyRole(GRANTOR_ADMIN_ROLE)
-    {
-        require(
-            _grantorAddress != address(0),
-            "Grantor: address can not be zero address"
-        );
+    function addGrantor(address _grantorAddress) public onlyRole(INITIAL_TRUSTEE_ROLE) {
+        require(_grantorAddress != address(0), "Grantor: address can not be zero address");
+        //TODO: Require address is not already a grantor
 
         uint256 _tokenId = nextTokenId.current();
         grantors.push(_grantorAddress);
@@ -48,13 +54,18 @@ abstract contract Grantor is Roles {
         emit AddedGrantor(msg.sender, _grantorAddress);
     }
 
+
     function assignAssetsToTrust() public onlyRole(GRANTOR_ROLE) {
+        //TODO: require sender has not already called
+
         uint256 _tokenId = _tokenIds[msg.sender];
         uint256 _amount = balanceOf(msg.sender, _tokenId);
         // setApprovalForAll(address(this), true);
         safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "");
     }
 
+
+    // TODO: REVOKE Assets from Trust
     // REMOVING GRANTOR REQUIRES BURNING ASSOCIATED TOKENS
     // /**
     // * @dev Owner may remove an address from grantor array.
@@ -70,6 +81,7 @@ abstract contract Grantor is Roles {
     //     delete grantor;
     //     emit ResetGrantor(msg.sender);
     // }
+
     /// @dev returns array of addresses active grantors
     function getGrantors() external view returns (address[] memory) {
         return grantors;
@@ -86,11 +98,7 @@ abstract contract Grantor is Roles {
     }
 
     /// @dev returns array of addresses with active stakers
-    function getGrantorsTokenID(address _grantor)
-        external
-        view
-        returns (uint256)
-    {
+    function getGrantorsTokenID(address _grantor) external view returns (uint256) {
         return _tokenIds[_grantor];
     }
 

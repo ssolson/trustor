@@ -37,10 +37,10 @@ abstract contract Beneficiary is Roles {
      * @param _beneficiaries ordered array addresses of the beneficiary.
      * @param shares_ ordered array of shares associated with the beneficiary.
      */
-    function setBeneficiaries(
-        address[] memory _beneficiaries,
-        uint256[] memory shares_
-    ) public onlyRole(GRANTOR_ADMIN_ROLE) {
+    function setBeneficiaries(address[] memory _beneficiaries, uint256[] memory shares_)
+        public
+        onlyRole(INITIAL_TRUSTEE_ROLE)
+    {
         // require(checkin is open);
 
         require(
@@ -66,15 +66,9 @@ abstract contract Beneficiary is Roles {
      * @param shares_ The number of shares owned by the payee.
      */
     function _addBeneficiary(address account, uint256 shares_) private {
-        require(
-            account != address(0),
-            "Beneficiary: account is the zero address"
-        );
+        require(account != address(0), "Beneficiary: account is the zero address");
         require(shares_ > 0, "Beneficiary: shares are 0");
-        require(
-            _shares[account] == 0,
-            "Beneficiary: account already has shares"
-        );
+        require(_shares[account] == 0, "Beneficiary: account already has shares");
 
         beneficiaries.push(account);
         grantRole(BENEFICIARY_ROLE, account);
