@@ -2,7 +2,8 @@ const { utils } = require("ethers");
 const fs = require("fs");
 const chalk = require("chalk");
 
-require("@nomiclabs/hardhat-waffle");
+// require("@nomiclabs/hardhat-waffle");
+require("@nomicfoundation/hardhat-chai-matchers");
 require("@tenderly/hardhat-tenderly");
 
 require("hardhat-deploy");

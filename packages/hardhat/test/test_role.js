@@ -1,160 +1,111 @@
-//
-// this script executes when you run 'yarn test'
-//
-// you can also test remote submissions like:
-// yarn test --network rinkeby
-//
-// you can even run mint commands if the tests pass like:
-// yarn test && echo "PASSED" || echo "FAILED"
-//
-
-const hre = require("hardhat");
-const { ethers } = hre;
 const { use, expect} = require("chai");
-const { solidity } = require("ethereum-waffle");
-// const { Contract, utils, BigNumber } = require("ethers");
+const hre = require("hardhat");
+// const { ethers } = hre;
+
+const { ethers } = require("hardhat")
+// const { ethers } = require("@nomiclabs/hardhat-ethers");
+
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 
-use(solidity);
+const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
+const GRANTOR_ROLE = ethers.utils.id("GRANTOR_ROLE");
+const INITIAL_TRUSTEE_ROLE = ethers.utils.id("INITIAL_TRUSTEE_ROLE");
+const SUCCESSOR_TRUSTEE_ROLE = ethers.utils.id("SUCCESSOR_TRUSTEE_ROLE");
+const BENEFICIARY_ROLE = ethers.utils.id("BENEFICIARY_ROLE");
 
-describe("🚩 🏵 Simple Trust Roles 🤖", async () => {
-  let Grantor;
-  let Trustor;
-  let Beneficiary1;
-  let Beneficiary2;
-  let Beneficiary3;
-
-  let usdcToken;
-  let simpleT;
-
-  let GRANTOR_ROLE = ethers.utils.id("GRANTOR_ROLE");
-  let TRUSTEE_ROLE = ethers.utils.id("TRUSTEE_ROLE");
-
-  [Grantor, Trustee, Beneficiary1, Beneficiary2, Beneficiary3] = await ethers.getSigners();
+describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
 
 
-  USDC_TOKEN_ADDRESS=false;
-  if(USDC_TOKEN_ADDRESS){
-    // live contracts, token already deployed
-  }else{
-    const USDCToken = await ethers.getContractFactory("USDC");
-    usdcToken = await USDCToken.deploy();
-  }
+  async function deployFixture() {
+
+    const [
+      InitialTrustee, 
+      Grantor2, 
+      SuccessorTrustee1, 
+      SuccessorTrustee2, 
+      Beneficiary1, 
+      Beneficiary2,
+    ] = await ethers.getSigners();
 
 
-  TRUST_ADDRESS=false;
-  if(TRUST_ADDRESS){
-    // const VENDOR_ADDRESS="0x990a5f26adce840e63B51A72d83EF08b02005dAC" 
-      vendor = await ethers.getContractAt("CrownVendor",VENDOR_ADDRESS);
-      // console.log(`\t`,"🛰 Connected to:",vendor.address)
+    const Name = "Trust Steve Living Trust";
+    const InitialTrusteeAddress = InitialTrustee.address;
+    const CheckInPeriod = 2
+    const Grantors = [InitialTrustee.address, Grantor2.address];
+    const SuccessorTrustees = [SuccessorTrustee1.address, SuccessorTrustee2.address];
+    const SuccessorTrusteePositions = [0,1]
+    const SuccessorTrusteePeriod = 2
+    const Beneficiary = [Beneficiary1.address, Beneficiary2.address];
+    const Shares = [75, 25];
 
-      // console.log(`\t`,"📡 Loading the yourToken address from the Vendor...")
-      // console.log(`\t`,"⚠️ Make sure *yourToken* is public in the Vendor.sol!")
-      // let tokenAddress = await vendor.yourToken();
-      // console.log('\t',"🏷 Token Address:",tokenAddress)
+    let argz = [
+      Name, 
+      InitialTrusteeAddress, 
+      CheckInPeriod,
+      Grantors, 
+      SuccessorTrustees, 
+      SuccessorTrusteePositions, 
+      SuccessorTrusteePeriod, 
+      Beneficiary, 
+      Shares
+    ];
 
-      // yourToken = await ethers.getContractAt("YourToken",tokenAddress);
-      // console.log(`\t`,"🛰 Connected to YourToken at:",yourToken.address)
+    const SimpleT = await ethers.getContractFactory("SimpleT");
+    const simpleT = await SimpleT.deploy(...argz);
 
-  } else {
-      // Input arguments
-      [Grantor, Trustee, Beneficiary1, Beneficiary2, Beneficiary3] = await ethers.getSigners();
-      const Beneficiary = [Beneficiary1.address, Beneficiary2.address];
-      const Percentages = [75,25];
+    const wallets = {
+      InitialTrustee: InitialTrustee, 
+      Grantor2: Grantor2, 
+      SuccessorTrustee1: SuccessorTrustee1, 
+      SuccessorTrustee2: SuccessorTrustee2, 
+      Beneficiary1: Beneficiary1, 
+      Beneficiary2: Beneficiary2,
+    }
 
-      // console.log('\t', 'Address', Grantor.address);
-
-      // Deploy the Contract
-      const SimpleT = await ethers.getContractFactory("SimpleT");
-      simpleT = await SimpleT.deploy(
-        Grantor.address, 
-        Trustee.address, 
-        Beneficiary, 
-        Percentages);     
-
-      // console.log('\t', "Transferring $100 USDC tokens to the grantor...")
-      const transferTokensResult2 = await usdcToken.transfer(
-        Grantor.address,
-        ethers.utils.parseUnits("100", 6)
-      );
-      const ttxResult2 =  await transferTokensResult2.wait()
-      expect(ttxResult2.status).to.equal(1);
-  }         
-
-
-describe('Has Role', () => {
-  it('Grantor Role', async () => {
-    const hasRoleResult = await simpleT.hasRole(GRANTOR_ROLE, Grantor.address);
-    expect(hasRoleResult).to.equal(true);
-  });  
-
-  it('Trustee Role', async () => {
-    const hasRoleResult = await simpleT.hasRole(TRUSTEE_ROLE, Trustee.address);
-    expect(hasRoleResult).to.equal(true);
-  });
-});
-
-
-describe('Only Grantor Role', () => {
-  let randAddress=ethers.Wallet.createRandom().address;
-  let grantorFuncs = {
-    // 'checkIn': [null], 
-    'setPeriods': [1],
-    'addGrantor': [ethers.Wallet.createRandom().address],
-    // 'resetGrantor': [null],
-    // 'addERC20ToTrust': [ethers.Wallet.createRandom().address],
-    'addTrustee': [randAddress],
-    'removeTrustee': [randAddress],
-    'resetTrustees': [null],
-    'setBeneficiaries': [[randAddress], [100]],
+    return { wallets, simpleT }
   };
 
-  const keys = Object.keys(grantorFuncs);
-  keys.forEach((func) => {
-    let argz = grantorFuncs[func];
 
-    it(`${func} Correct Role`, async () => {
-      await expect(
-        simpleT.connect(Grantor)[ func ](...argz))
-        .to.be.ok;
+  describe('Has Role', () => {
+    it('Grantor Role', async () => {
+      const { wallets, simpleT } = await deployFixture();
+
+      const hasRoleResult = await simpleT.hasRole(GRANTOR_ROLE, wallets['Grantor2'].address);
+      expect(hasRoleResult).to.equal(true);
     });  
 
-    it(`${func} Incorrect Role`, async () => {
-      await expect(
-        simpleT.connect(Trustee)[ func ](...argz))
-        .to.be.reverted;
-        // The line below does not work due to mixed capitalization between expected and returned
-        //.to.be.revertedWith(`AccessControl: account ${Trustee.address} is missing role ${GRANTOR_ROLE}`);
-    });
+    // it('Trustee Role', async () => {
+    //   const hasRoleResult = await simpleT.hasRole(SUCCESSOR_TRUSTEE_ROLE, SuccessorTrustee1.address);
+    //   expect(hasRoleResult).to.equal(true);
+    // });
   });
-})
 
-  describe('Only Trustee Role', (Percentages) => {      
-    let trusteeFuncs = {
-      'releaseAssets': [null],
-      // 'executeTrust': [null], 
+  describe('Check Roles', () => {
+    
+    let randAddress=ethers.Wallet.createRandom().address;
+    let addressNames2Roles = {
+      'InitialTrustee': [DEFAULT_ADMIN_ROLE, INITIAL_TRUSTEE_ROLE, GRANTOR_ROLE],
+      // 'InitialTrustee': [INITIAL_TRUSTEE_ROLE, GRANTOR_ROLE],
+      'Grantor2': [GRANTOR_ROLE],
+      'SuccessorTrustee1': [SUCCESSOR_TRUSTEE_ROLE],
+      'SuccessorTrustee1': [SUCCESSOR_TRUSTEE_ROLE],
+      'Beneficiary1': [BENEFICIARY_ROLE],
+      'Beneficiary2': [BENEFICIARY_ROLE],
     };
 
-    const keys = Object.keys(trusteeFuncs);
-    keys.forEach((func) => {
-      let argz = trusteeFuncs[func];
+    const addressNames = Object.keys(addressNames2Roles);
+    addressNames.forEach((addressName) => {
+      let roles = addressNames2Roles[addressName];
+      roles.forEach((role) => {
 
-      it(`${func} Correct Role`, async () => {
-        await expect(
-          simpleT.connect(Trustee)[ func ](...argz))
-          .to.be.ok;
-      });  
-
-      it(`${func} Incorrect Role`, async () => {
-        await expect(
-          simpleT.connect(Grantor)[ func ](...argz))
-          .to.be.reverted;
+        it(`${addressName} is ${role}`, async () => {
+          const { wallets, simpleT } = await deployFixture();
+          const hasRoleResult = await simpleT.hasRole(role,  wallets[addressName].address);
+          expect(hasRoleResult).to.equal(true);          
+        });  
       });
     });
-  });
-
+  })
+  
 });
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
