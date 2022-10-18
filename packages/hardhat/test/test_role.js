@@ -1,4 +1,4 @@
-const { use, expect} = require("chai");
+const { use, expect } = require("chai");
 const hre = require("hardhat");
 // const { ethers } = hre;
 
@@ -20,11 +20,11 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
   async function deployFixture() {
 
     const [
-      InitialTrustee, 
-      Grantor2, 
-      SuccessorTrustee1, 
-      SuccessorTrustee2, 
-      Beneficiary1, 
+      InitialTrustee,
+      Grantor2,
+      SuccessorTrustee1,
+      SuccessorTrustee2,
+      Beneficiary1,
       Beneficiary2,
     ] = await ethers.getSigners();
 
@@ -34,20 +34,20 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
     const CheckInPeriod = 2
     const Grantors = [InitialTrustee.address, Grantor2.address];
     const SuccessorTrustees = [SuccessorTrustee1.address, SuccessorTrustee2.address];
-    const SuccessorTrusteePositions = [0,1]
+    const SuccessorTrusteePositions = [0, 1]
     const SuccessorTrusteePeriod = 2
     const Beneficiary = [Beneficiary1.address, Beneficiary2.address];
     const Shares = [75, 25];
 
     let argz = [
-      Name, 
-      InitialTrusteeAddress, 
+      Name,
+      InitialTrusteeAddress,
       CheckInPeriod,
-      Grantors, 
-      SuccessorTrustees, 
-      SuccessorTrusteePositions, 
-      SuccessorTrusteePeriod, 
-      Beneficiary, 
+      Grantors,
+      SuccessorTrustees,
+      SuccessorTrusteePositions,
+      SuccessorTrusteePeriod,
+      Beneficiary,
       Shares
     ];
 
@@ -55,11 +55,11 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
     const simpleT = await SimpleT.deploy(...argz);
 
     const wallets = {
-      InitialTrustee: InitialTrustee, 
-      Grantor2: Grantor2, 
-      SuccessorTrustee1: SuccessorTrustee1, 
-      SuccessorTrustee2: SuccessorTrustee2, 
-      Beneficiary1: Beneficiary1, 
+      InitialTrustee: InitialTrustee,
+      Grantor2: Grantor2,
+      SuccessorTrustee1: SuccessorTrustee1,
+      SuccessorTrustee2: SuccessorTrustee2,
+      Beneficiary1: Beneficiary1,
       Beneficiary2: Beneficiary2,
     }
 
@@ -73,7 +73,7 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
 
       const hasRoleResult = await simpleT.hasRole(GRANTOR_ROLE, wallets['Grantor2'].address);
       expect(hasRoleResult).to.equal(true);
-    });  
+    });
 
     // it('Trustee Role', async () => {
     //   const hasRoleResult = await simpleT.hasRole(SUCCESSOR_TRUSTEE_ROLE, SuccessorTrustee1.address);
@@ -82,8 +82,6 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
   });
 
   describe('Check Roles', () => {
-    
-    let randAddress=ethers.Wallet.createRandom().address;
     let addressNames2Roles = {
       'InitialTrustee': [DEFAULT_ADMIN_ROLE, INITIAL_TRUSTEE_ROLE, GRANTOR_ROLE],
       // 'InitialTrustee': [INITIAL_TRUSTEE_ROLE, GRANTOR_ROLE],
@@ -101,11 +99,84 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
 
         it(`${addressName} is ${role}`, async () => {
           const { wallets, simpleT } = await deployFixture();
-          const hasRoleResult = await simpleT.hasRole(role,  wallets[addressName].address);
-          expect(hasRoleResult).to.equal(true);          
-        });  
+          const hasRoleResult = await simpleT.hasRole(role, wallets[addressName].address);
+          expect(hasRoleResult).to.equal(true);
+        });
       });
     });
   })
-  
+
+  describe('Only INITIAL_TRUSTEE_ROLE Role', () => {
+    let randAddress = ethers.Wallet.createRandom().address;
+    let initialTrusteeFuncs = {
+      // 'checkIn': [null], 
+      'setPeriods': [1],
+      'addGrantor': [ethers.Wallet.createRandom().address],
+      // 'resetGrantor': [null],
+      // 'addERC20ToTrust': [ethers.Wallet.createRandom().address],
+      // 'addTrustee': [randAddress],
+      // 'removeTrustee': [randAddress],
+      // 'resetTrustees': [null],
+      // 'setBeneficiaries': [[randAddress], [100]],
+    };
+
+    const keys = Object.keys(initialTrusteeFuncs);
+    keys.forEach((func) => {
+      let argz = initialTrusteeFuncs[func];
+
+      it(`${func} Correct Role`, async () => {
+        const { wallets, simpleT } = await deployFixture();
+        const InitialTrustee = wallets['InitialTrustee']
+
+        await expect(
+          simpleT.connect(InitialTrustee)[func](...argz))
+          .to.be.ok;
+      });
+
+      it(`${func} Incorrect Role`, async () => {
+        const { wallets, simpleT } = await deployFixture();
+        const Grantor2 = wallets['Grantor2']
+
+        await expect(
+          simpleT.connect(Grantor2)[func](...argz))
+          .to.be.reverted;
+        // The line below does not work due to mixed capitalization between expected and returned
+        //.to.be.revertedWith(`AccessControl: account ${Trustee.address} is missing role ${GRANTOR_ROLE}`);
+      });
+    });
+  })
+
+  // describe('Only Grantor_ROLE Role', () => {
+
+  //   let randAddress = ethers.Wallet.createRandom().address;
+  //   let GrantorFuncs = {
+  //     'assignAssetsToTrust': [Grantor2],
+  //   };
+
+  //   const keys = Object.keys(GrantorFuncs);
+  //   keys.forEach((func) => {
+  //     let argz = GrantorFuncs[func];
+
+  //     it(`${func} Correct Role`, async () => {
+  //       const { wallets, simpleT } = await deployFixture();
+  //       const InitialTrustee = wallets['InitialTrustee']
+
+  //       await expect(
+  //         simpleT.connect(InitialTrustee)[func](...argz))
+  //         .to.be.ok;
+  //     });
+
+  //     it(`${func} Incorrect Role`, async () => {
+  //       const { wallets, simpleT } = await deployFixture();
+  //       const Grantor2 = wallets['Grantor2']
+
+  //       await expect(
+  //         simpleT.connect(Grantor2)[func](...argz))
+  //         .to.be.reverted;
+  //       // The line below does not work due to mixed capitalization between expected and returned
+  //       //.to.be.revertedWith(`AccessControl: account ${Trustee.address} is missing role ${GRANTOR_ROLE}`);
+  //     });
+  //   });
+  // })
+
 });
