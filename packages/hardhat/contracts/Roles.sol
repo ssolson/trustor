@@ -5,10 +5,13 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
+
 /// @title Roles
 /// @author sters.eth
 /// @notice Contract defines roles and ERC1155
 abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
+    uint256 public constant TOKENS_PER_GRANTOR = 1 * 10**18;
+
     /** 
     @dev GRANTOR_ADMIN_ROLE serves as a backup to the INITIAL_TRUSTEE_ROLE
     */
@@ -66,4 +69,25 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
     {
         return super.supportsInterface(interfaceId);
     }
+
+    // @ dev require outside senders to only send to Trust address
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) public virtual override {
+        require(
+            to == address(this),
+            "ERC1155: Only send tokens to Trust or Burn"
+        );
+        require(
+            amount == TOKENS_PER_GRANTOR,
+            "ERC1155: Must send all tokens"
+        );
+
+        super.safeTransferFrom(from,to,id,amount,data);
+    }
+    // TODO: super for safeBatchTransfer or other transfer methods
 }
