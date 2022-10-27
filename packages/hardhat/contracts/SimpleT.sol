@@ -12,21 +12,11 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
     event CkeckIn(address owner, uint256 newStart, uint256 newEnd);
     event PeriodSet(address owner, uint128 newPeriod);
 
-    string public constant VERSION = "0.1.0";
+    string public constant VERSION = "2022.10.0";
 
     string public name;
 
-    /**  @dev set the possible Trust States */
-    // enum TrustStates{ Initializing, Active, Paused, Admin, Executed}
-    // TrustStates trustState;
-    // TrustStates constant defaultState = TrustStates.Initializing;
     bool public assetsReleased;
-
-    // using EnumerableMap for EnumerableMap.AddressToUintMap;
-    // EnumerableMap.AddressToUintMap private grantor;
-
-    // using EnumerableSet for EnumerableSet.AddressSet;
-    // EnumerableSet.AddressSet private uniqueAssets;
 
     /// @dev the time trust was initialized
     uint256 public initializedTrust;
@@ -74,7 +64,7 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
         _setRoleAdmin(BENEFICIARY_ROLE, INITIAL_TRUSTEE_ROLE);
 
         // Initialize roles
-        _setupRole(DEFAULT_ADMIN_ROLE, _initialTrustee);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(INITIAL_TRUSTEE_ROLE, msg.sender);
 
         // Setup Trust
@@ -146,119 +136,3 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
         return address(this);
     }
 }
-
-/// PascalCase for Struct and event names
-/// camelCase for function, modifier and variable name
-// Part 1: Define custom data, like enums and structs
-// Part 2: Define fixed-size (scalar) data, like uint,
-// Part 3: Define dynamic-size (non-scalar) data, like mappings and arrays
-// Part 4: Define events
-// Part 5: Define public & external functions.
-// Part 6: Define internal & private functions
-// Part 7: Define modifiers
-
-// /**
-// * @dev Owner may add ERC20 token addresses.
-// * @param _token token to add.
-// */
-// function addERC20ToTrust(address _token) external {
-//     require(_token != address(0), 'address can not be zero address');
-//     // require(allowance>balance) //Need to add inputs for this check
-//     GrantorAssets[msg.sender].push(_token);
-//     uniqueAssets.add(_token);
-//     emit AddedERC20(msg.sender, _token);
-// }
-
-// /**
-//  * @notice Checks the balance of a passed token for a provided wallet.
-//  * @param _token The target token.
-//  * @param _wallet The target token.
-//  */
-// function erc20Balance(
-//     address _token,
-//     address _wallet)
-//     view
-//     public
-//     returns (uint256 total)
-// {
-//     total = IERC20(_token).balanceOf(_wallet);
-//     return total;
-// }
-
-// /**
-//  * @notice transfers the passed token from the grantor to the specified address.
-//  * @param _token The target token.
-//  * @param _from The grantor's wallet.
-//  * @param _to The trustee or beneficiary's wallet
-//  * @param _amount The _amount to send.
-//  */
-// function erc20TransferFrom(
-//     address _token,
-//     address _from,
-//     address _to,
-//     uint256 _amount
-//     ) public
-// {
-//     IERC20(_token).transferFrom( _from, _to, _amount);
-// }
-
-// /**
-//  * @notice transfers fungibles to the beneficiaries
-//  */
-// function executeERC20Trust() public onlyRole(TRUSTEE_ROLE) {
-//     // require(block.timestamp > checkInPeriodEnd, "Check-In Period is still live.") ;
-//     require(address(beneficiaryContract) != address(0));
-
-//     // Iterate over Grantor wallets
-//     for (
-//         uint256 grantor_wallet_idx = 0;
-//         grantor_wallet_idx < grantor.length();
-//         grantor_wallet_idx++
-//     ) {
-//         // Iterate over tokens in Grantor wallet
-//         address grantorAddress = grantor.at(grantor_wallet_idx);
-//         address[] memory grantorAddress_tokens = GrantorAssets[grantorAddress];
-//         for (
-//             uint256 asset_idx = 0;
-//             asset_idx < grantorAddress_tokens.length;
-//             asset_idx++
-//         ) {
-//             address asset_addr = grantorAddress_tokens[asset_idx];
-//             uint256 total_assets = erc20Balance(asset_addr, grantorAddress);
-//             // require(sent, "Failed to get balance.");
-//             // if (total_assets==0) {pass}
-//             erc20TransferFrom( asset_addr,
-//                 grantorAddress,
-//                 address(beneficiaryContract),
-//                 total_assets
-//             );
-//             // (bool sent) =
-//             // require(sent, "Failed to withdraw tokens");
-//         }
-//     }
-// }
-
-//     /**
-//  * @notice transfers fungibles to the beneficiaries
-//  */
-// function claimERC20() public {
-//     // Send ether
-//     beneficiaryContract.release(msg.sender);
-
-//     // Iterate over tokens in Grantor wallet
-//     address grantorAddress = grantor[grantor_wallet_idx];
-//     address[] memory grantorAddress_tokens = GrantorAssets[grantorAddress];
-//     for (
-//         uint256 asset_idx = 0;
-//         asset_idx < grantorAddress_tokens.length;
-//         asset_idx++
-//     ) {
-//         address asset_addr = grantorAddress_tokens[asset_idx];
-//         uint256 total_assets = erc20Balance(asset_addr, grantorAddress);
-//         // require(sent, "Failed to get balance.");
-//         // if (total_assets==0) {pass}
-//          beneficiaryContract.release(asset_addr, msg.sender);
-//         // (bool sent) =
-//         // require(sent, "Failed to withdraw tokens");
-//     }
-// }

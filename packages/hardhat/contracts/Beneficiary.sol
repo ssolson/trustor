@@ -39,8 +39,7 @@ abstract contract Beneficiary is Roles {
      */
     function setBeneficiaries(address[] memory _beneficiaries, uint256[] memory shares_)
         public
-        onlyRole(INITIAL_TRUSTEE_ROLE)
-    {
+        onlyRole(INITIAL_TRUSTEE_ROLE) {
         // require(checkin is open);
 
         require(

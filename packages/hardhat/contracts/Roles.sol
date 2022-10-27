@@ -12,6 +12,11 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
     uint256 public constant TOKENS_PER_GRANTOR = 1 * 10**18;
 
+    /**  @dev set the possible Trust States */
+    enum TrustStates { Inactive, Active, Executing, Executed}
+    TrustStates public trustState;
+    TrustStates public constant defaultState = TrustStates.Inactive;
+
     /** 
     @dev GRANTOR_ADMIN_ROLE serves as a backup to the INITIAL_TRUSTEE_ROLE
     */
@@ -90,4 +95,13 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
         super.safeTransferFrom(from,to,id,amount,data);
     }
     // TODO: super for safeBatchTransfer or other transfer methods
+
+    function returnState() external view returns (string memory) {
+        TrustStates temp = trustState;
+        if (temp == TrustStates.Inactive) return "Inactive";
+        if (temp == TrustStates.Active) return "Active";
+        if (temp == TrustStates.Executing) return "Executing";
+        if (temp == TrustStates.Executed) return "Executed";
+        return "";
+    }
 }
