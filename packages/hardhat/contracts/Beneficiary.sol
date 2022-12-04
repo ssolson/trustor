@@ -1,12 +1,12 @@
 pragma solidity 0.8.17;
 // SPDX-License-Identifier: MIT
 
-import "./Roles.sol";
+import "./Trustee.sol";
 
 /// @title Simple T
 /// @author sters.eth
 /// @notice Contract will has functions for Beneficiaries
-abstract contract Beneficiary is Roles {
+contract Beneficiary is Trustee {
     event BeneficiaryAdded(address account, uint256 shares);
     event AssetsReleased(address to, uint256 amount);
     event AssetsReceived(address from, uint256 amount);
@@ -22,10 +22,6 @@ abstract contract Beneficiary is Roles {
         return beneficiaries;
     }
 
-    /// @dev returns array of addresses with beneficiaries shares
-    function getShares() external view returns (uint256) {
-        return _shares[msg.sender];
-    }
 
     /// @dev returns array of addresses with beneficiaries shares
     function getAddressShares(address _addr) external view returns (uint256) {
@@ -89,4 +85,29 @@ abstract contract Beneficiary is Roles {
         delete beneficiaries;
         _totalShares = 0;
     }
+
+    /// @dev iterates over grantors array to find passed address
+    function findIsABeneficiary(address _beneficiary) public view returns (bool isABeneficiary) {
+        isABeneficiary = false;
+        for (uint i=0; i < beneficiaries.length; i++) {
+            if (_beneficiary == beneficiaries[i]) {
+                isABeneficiary = true;
+                break;
+            }
+        }        
+        return isABeneficiary;
+    }
+
+    function beneficiaryDeceasedProRata(address beneficiary) 
+        external 
+        onlyActiveTrustee 
+        isDistribution(DistributionTypes.proRata) {
+        require(findIsABeneficiary(beneficiary), "Passed address is not a current beneficiary" );
+
+    }
+
+    // function beneficiaryDeceasedPerStirpes (address beneficiary, address[] newBeneficiaries) external onlyActiveTrustee {
+    //     // require(isBeneficiary(beneficiary), "Passed address is not a current beneficiary" );
+
+    // }
 }

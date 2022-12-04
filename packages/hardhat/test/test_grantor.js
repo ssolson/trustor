@@ -24,11 +24,12 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
     const InitialTrusteeAddress = InitialTrustee.address;
     const CheckInPeriod = 2;
     const Grantors = [InitialTrustee.address, Grantor2.address];
+    const Distribution = "perStirpes";
     const SuccessorTrustees = [
       SuccessorTrustee1.address,
       SuccessorTrustee2.address,
     ];
-    const SuccessorTrusteePositions = [0, 1];
+    const SuccessorTrusteePositions = [1, 2];
     const SuccessorTrusteePeriod = 2;
     const Beneficiary = [Beneficiary1.address, Beneficiary2.address];
     const Shares = [75, 25];
@@ -38,6 +39,7 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       InitialTrusteeAddress,
       CheckInPeriod,
       Grantors,
+      Distribution,
       SuccessorTrustees,
       SuccessorTrusteePositions,
       SuccessorTrusteePeriod,
@@ -64,9 +66,10 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
     it("addGrantor: Correct Length", async () => {
       const { wallets, simpleT } = await deployFixture();
       const N0 = await simpleT.getGrantorsLength();
-      let setNewGrantor = await simpleT.addGrantor(
-        wallets["SuccessorTrustee1"].address
-      );
+      initialTrustee = wallets["InitialTrustee"];
+      await simpleT
+        .connect(initialTrustee)
+        .addGrantor(wallets["SuccessorTrustee1"].address);
       const N1 = await simpleT.getGrantorsLength();
       expect(N0.add(1)).to.equal(N1);
     });
@@ -244,19 +247,19 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       const N0 = await simpleT.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnState();
+      const state0 = await simpleT.returnTrustState();
       expect(state0).to.equal("Inactive");
 
       await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnState();
+      const state1 = await simpleT.returnTrustState();
       expect(state1).to.equal("Active");
 
       await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
-      const state2 = await simpleT.returnState();
+      const state2 = await simpleT.returnTrustState();
       expect(state2).to.equal("Inactive");
 
       await simpleT.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
-      const state3 = await simpleT.returnState();
+      const state3 = await simpleT.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
 
@@ -270,23 +273,23 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       const N0 = await simpleT.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnState();
+      const state0 = await simpleT.returnTrustState();
       expect(state0).to.equal("Inactive");
 
       await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnState();
+      const state1 = await simpleT.returnTrustState();
       expect(state1).to.equal("Active");
 
       await simpleT.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
       const N1 = await simpleT.getGrantorsLength();
       expect(N0.sub(1)).to.equal(N1);
-      const state2 = await simpleT.returnState();
+      const state2 = await simpleT.returnTrustState();
       expect(state2).to.equal("Active");
 
       await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
       const N2 = await simpleT.getGrantorsLength();
       expect(N2).to.equal(0);
-      const state3 = await simpleT.returnState();
+      const state3 = await simpleT.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
 
@@ -399,23 +402,23 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       const N0 = await simpleT.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnState();
+      const state0 = await simpleT.returnTrustState();
       expect(state0).to.equal("Inactive");
 
       await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnState();
+      const state1 = await simpleT.returnTrustState();
       expect(state1).to.equal("Active");
 
       await simpleT
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["Grantor2"].address);
-      const state2 = await simpleT.returnState();
+      const state2 = await simpleT.returnTrustState();
       expect(state2).to.equal("Inactive");
 
       await simpleT
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["InitialTrustee"].address);
-      const state3 = await simpleT.returnState();
+      const state3 = await simpleT.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
 
@@ -429,23 +432,23 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       const N0 = await simpleT.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnState();
+      const state0 = await simpleT.returnTrustState();
       expect(state0).to.equal("Inactive");
 
       await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnState();
+      const state1 = await simpleT.returnTrustState();
       expect(state1).to.equal("Active");
 
       await simpleT
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["InitialTrustee"].address);
-      const state2 = await simpleT.returnState();
+      const state2 = await simpleT.returnTrustState();
       expect(state2).to.equal("Active");
 
       await simpleT
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["Grantor2"].address);
-      const state3 = await simpleT.returnState();
+      const state3 = await simpleT.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
   });
@@ -468,17 +471,17 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
     it("assignAssetsToTrust: state changed", async () => {
       const { wallets, simpleT } = await deployFixture();
 
-      const state0 = await simpleT.returnState();
+      const state0 = await simpleT.returnTrustState();
       expect(state0).to.equal("Inactive");
       await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnState();
+      const state1 = await simpleT.returnTrustState();
       expect(state1).to.equal("Active");
     });
 
     it("assignAssetsToTrust: Event Emitted", async () => {
       const { wallets, simpleT } = await deployFixture();
 
-      const state0 = await simpleT.returnState();
+      const state0 = await simpleT.returnTrustState();
 
       const initialTrustee = wallets["InitialTrustee"].address;
       await expect(
@@ -487,5 +490,19 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
         .to.emit(simpleT, "AssetsAssigned")
         .withArgs(initialTrustee);
     });
+  });
+
+  it("Set Distribution", async () => {
+    const { wallets, simpleT } = await deployFixture();
+
+    expect(await simpleT.returnDistributionType()).to.equal("perStirpes");
+
+    const newDist = "proRata";
+    await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist);
+    expect(await simpleT.returnDistributionType()).to.equal(newDist);
+
+    const newDist2 = "perStirpes";
+    await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist2);
+    expect(await simpleT.returnDistributionType()).to.equal(newDist2);
   });
 });

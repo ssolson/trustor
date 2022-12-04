@@ -1,26 +1,30 @@
 pragma solidity 0.8.17;
 // SPDX-License-Identifier: MIT
 
-import "./Roles.sol";
+import "./Grantor.sol";
 
 /// @title Simple T
 /// @author sters.eth
 /// @notice Contract conntains Trustee functions
-abstract contract Trustee is Roles {
+contract Trustee is Grantor {
+    event SetInitialTrustee(address owner, address initialTrusteeAddress);
+    event AddedSccessorTrustee(address owner, address successorTrustees, uint256 position);
+    event RemovedSuccessorTrustee(address owner, address successorTrustees, uint256 newPeriod);
+    // event ResetTrustees(address owner);
+    event successorTrusteePeriodSet(address owner, uint256 newPeriod);
+    
     /**  @dev Inital trustee */
-    address public trustee;
+    address[] public initialTrustees;
 
     /**  @dev Array of trustees */
-    address[] public trustees;
+    address[] public successorTrustees;
+    mapping(address => uint256) public successorTrusteePosition;
 
-    /**  @dev The number of periods after each checkin */
-    uint128 public successorTrusteePeriod;
+    /**  @dev The number of periods in weeks after each checkin */
+    uint256 public successorTrusteePeriod;
 
-    event SetInitialTrustee(address owner, address trusteeAddress);
-    event AddedSccessorTrustee(address owner, address trusteeAddress);
-    event RemovedTrustee(address owner, address trusteeAddress);
-    event ResetTrustees(address owner);
-    event successorTrusteePeriodSet(address owner, uint128 newPeriod);
+    /**  @dev Active trustees */
+    address public activeTrustee;
 
 
     /**
@@ -30,75 +34,117 @@ abstract contract Trustee is Roles {
     function setInitialTrustee(address initialTrusteeAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(initialTrusteeAddress != address(0), "address can not be zero address");
         // TODO: If not null revoke role         
-        trustee = initialTrusteeAddress;
+        initialTrustees.push(initialTrusteeAddress);
         grantRole(INITIAL_TRUSTEE_ROLE, initialTrusteeAddress);
         emit SetInitialTrustee(msg.sender, initialTrusteeAddress);
     }
 
 
-    function addSuccessorTrustees(address[] memory trusteeAddresses) public onlyRole(INITIAL_TRUSTEE_ROLE) {
+    function addSuccessorTrustees(address[] memory trusteeAddresses, uint256[] memory _successorTrusteePositions) public onlyInitialTrustee {
+        require(
+            trusteeAddresses.length == _successorTrusteePositions.length, 
+            "Addresses & positions must have equal length"
+        );
         for (uint256 idx = 0; idx < trusteeAddresses.length; idx++) {
-            addSuccessorTrustee(trusteeAddresses[idx]);
+            addSuccessorTrustee(trusteeAddresses[idx], _successorTrusteePositions[idx]);
         }
     }
 
     /**
      * @dev Owner may add addresses as Trustees.
-     * @param trusteeAddress address of trustee.
+     * @param _trusteeAddress address of trustee.
      */
-    function addSuccessorTrustee(address trusteeAddress) public onlyRole(INITIAL_TRUSTEE_ROLE) {
-        require(trusteeAddress != address(0), "address can not be zero address");
-        trustees.push(trusteeAddress);
-        grantRole(SUCCESSOR_TRUSTEE_ROLE, trusteeAddress);
-        emit AddedSccessorTrustee(msg.sender, trusteeAddress);
+    function addSuccessorTrustee(address _trusteeAddress, uint256 position) public onlyInitialTrustee {
+        require(_trusteeAddress != address(0), "Trustee: address can not be zero address");
+        require(!(hasRole(SUCCESSOR_TRUSTEE_ROLE, _trusteeAddress)), "Trustee: address already successor trustee");
+        require(position>0, "successor_position cannot be the default value" );
+
+        successorTrustees.push(_trusteeAddress);
+        successorTrusteePosition[_trusteeAddress] = position;
+        _grantRole(SUCCESSOR_TRUSTEE_ROLE, _trusteeAddress);
+        emit AddedSccessorTrustee(msg.sender, _trusteeAddress, position);
+    }
+
+
+    /// @dev iterates over grantors array to find passed address
+    function findIsATrustee(address _trustee) public view returns (bool isATrustee) {
+        isATrustee = false;
+        for (uint i=0; i < successorTrustees.length; i++) {
+            if (_trustee == successorTrustees[i]) {
+                isATrustee = true;
+                break;
+            }
+        }        
+        return isATrustee;
     }
 
 
     /**
      * @notice Set Period in weeks between succsor trustees
      */
-    function setSuccessorPeriod(uint128 newPeriod) public onlyRole(INITIAL_TRUSTEE_ROLE) {
+    function setSuccessorPeriod(uint256 newPeriod) public onlyInitialTrustee {
         require(newPeriod >= 1, "New period must be an integer greater than 0");
-        require(newPeriod <= 36, "New period must be an integer less than 36");
-        successorTrusteePeriod = newPeriod;
+        require(newPeriod <= 8, "New period must be an integer less than 36");
+        successorTrusteePeriod = newPeriod * 1 weeks;
         emit successorTrusteePeriodSet(msg.sender, newPeriod);
+    }
+
+    function adminRemoveSuccessorTrustee(address _grantorAddress) external onlyInitialTrustee {
+        _removeSuccessorTrustee(_grantorAddress);
     }
 
 
     /**
-     * @dev Owner may remove an address from Trustees.
-     * [2.1.5] A Successor Trustee that has been removed must be replaced within 30 days of removal
-     * by an Independent Trustee who qualifies as such under Section 672(c) of the Internal
-     * Revenue Code of the United States.
-     * [2.1.6] Notice of Successor Trustee removal and subsequent replacement by an Independent Trustee
-     * must be in writing, published along with this trust in the form of an amendment, and must
-     * state the date of removal.
-     * @param trusteeAddress address of trustee.
-     */
-    function removeTrustee(address trusteeAddress) external onlyRole(INITIAL_TRUSTEE_ROLE) {
-        // TODO: REMOVE TRUSTEE ROLE
-        for (uint256 idx = 0; idx < trustees.length; idx++) {
-            if (trusteeAddress == trustees[idx]) {
-                if (trustees.length == 1) {
-                    resetTrustees();
+    * @dev Initial Trustee may remove a successor Trustee.
+    * Removing a Grantor will burn its tokens, revoke the GRANTOR_ROLE, insure assests assigned are false.
+    * If there are no more grantors then the state mut go to Inactive 
+    * @param _successorTrusteeAddress address of trustee to remove.
+    */
+    function _removeSuccessorTrustee(address _successorTrusteeAddress) internal {
+        require(successorTrustees.length>1, "Cannot remove last successor trustee. Please add replacement before removal.");
+
+        for (
+            uint256 idx = 0;
+            idx < successorTrustees.length;
+            idx++
+        ) {
+            if(_successorTrusteeAddress == successorTrustees[idx]){
+                successorTrustees[idx] = successorTrustees[successorTrustees.length - 1];
+                successorTrustees.pop(); 
+                
+                if (_msgSender() == _successorTrusteeAddress) {
+                    renounceRole(SUCCESSOR_TRUSTEE_ROLE, _successorTrusteeAddress);  
                 } else {
-                    trustees[idx] = trustees[trustees.length - 1];
-                    trustees.pop(); // Remove the last element
-                    emit RemovedTrustee(msg.sender, trusteeAddress);
+                    revokeRole(SUCCESSOR_TRUSTEE_ROLE, _successorTrusteeAddress); 
                 }
+
+                emit RemovedSuccessorTrustee(
+                    _msgSender(), 
+                    _successorTrusteeAddress, 
+                    successorTrusteePosition[_successorTrusteeAddress]
+                );
+
             }
         }
     }
 
-    /// @dev deletes all address from trustees
-    function resetTrustees() public onlyRole(INITIAL_TRUSTEE_ROLE) {
-        delete trustees;
-        emit ResetTrustees(msg.sender);
+
+
+
+    function removeActiveTrustee() external onlyRole(SUCCESSOR_TRUSTEE_ROLE) {
+        require(
+            block.timestamp > getActiveTrusteeExpirationTime(), 
+            "Active trustee has not been inactive long enough."
+        );
+        
+        _revokeRole(ACTIVE_TRUSTEE_ROLE, activeTrustee);
+        activeTrustee = address(0);
+        trustState = TrustStates.Active;
     }
 
-    /// @dev returns array of addresses with active stakers
-    function getTrustee() external view returns (address[] memory) {
-        return trustees;
+
+    function getActiveTrusteeExpirationTime() public view returns(uint256) {
+        return activeTrusteeLastCheckInTime + successorTrusteePeriod;
     }
 
     /**
@@ -107,4 +153,20 @@ abstract contract Trustee is Roles {
      *  designated in this trust; or per stirpes/per capita to the
      *  descendants of the beneficiary.
      */
+
+    /**
+     * @notice transfers fungibles to the beneficiaries
+     */
+    function releaseAssets() public onlyRole(ACTIVE_TRUSTEE_ROLE) isState(TrustStates.Executing) {
+        trustState = TrustStates.Executed;
+    }
+
+    /// @dev returns the number of grantors
+    function getSuccessorTrusteeLength() public view returns (uint256) {
+        return successorTrustees.length;
+    }
+
+
+
+
 }

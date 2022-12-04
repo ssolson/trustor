@@ -80,7 +80,11 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
       let roles = addressNames2Roles[addressName];
       roles.forEach((role) => {
         it(`${addressName} is ${role}`, async () => {
-
+          const { wallets, simpleT } = await deployFixture();
+          const hasRoleResult = await simpleT.hasRole(
+            role,
+            wallets[addressName].address
+          );
           expect(hasRoleResult).to.equal(true);
         });
       });
@@ -94,12 +98,9 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
     };
 
     const keys = Object.keys(AdminFuncs);
-    keys.forEach((func) => {
-      let argz = AdminFuncs[func];          const { wallets, simpleT } = await deployFixture();
-          const hasRoleResult = await simpleT.hasRole(
-            role,
-            wallets[addressName].address
-          );
+    keys.forEach(async (func) => {
+      let argz = AdminFuncs[func];
+      const { wallets, simpleT } = await deployFixture();
 
       it(`${func} Correct Role`, async () => {
         const { wallets, simpleT } = await deployFixture();
@@ -119,8 +120,8 @@ describe("🚩 🏵 Simple Trust Roles 🤖", async function () {
   describe("Only INITIAL_TRUSTEE_ROLE Role", () => {
     let randAddress = ethers.Wallet.createRandom().address;
     let initialTrusteeFuncs = {
-      // 'checkIn': [null],
-      setPeriods: [1],
+      checkInNow: [null],
+      setCheckInPeriod: [1],
       addGrantor: [randAddress],
       addGrantors: [[randAddress]],
       addSuccessorTrustee: [randAddress],

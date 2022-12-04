@@ -47,12 +47,13 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
     bytes32 public constant SUCCESSOR_TRUSTEE_ROLE = keccak256("SUCCESSOR_TRUSTEE_ROLE");
 
     /**  
-    @dev TRUSTEE_ROLE may execute the trust 
-    The TRUSTEE_ROLE is selected from the list of SUCCESOR_TRUSTEES. The 
-    TRUSTEE_ROLE serves as the active trustee and may perform actions on 
+    @dev ACTIVE_TRUSTEE_ROLE may execute the trust 
+    The ACTIVE_TRUSTEE_ROLE is selected from the list of SUCCESOR_TRUSTEES. The 
+    ACTIVE_TRUSTEE_ROLE serves as the active trustee and may perform actions on 
     following the initial Trustees death.
     */
-    bytes32 public constant TRUSTEE_ROLE = keccak256("TRUSTEE_ROLE");
+    bytes32 public constant ACTIVE_TRUSTEE_ROLE = keccak256("ACTIVE_TRUSTEE_ROLE");
+    // ROLE: CURRENT TRUSTEE - the executing trustee
 
     /**  
     @dev BENEFICIARY_ROLE represents the individual or group of individuals 
@@ -96,12 +97,17 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
     }
     // TODO: super for safeBatchTransfer or other transfer methods
 
-    function returnState() external view returns (string memory) {
+    function returnTrustState() external view returns (string memory) {
         TrustStates temp = trustState;
         if (temp == TrustStates.Inactive) return "Inactive";
         if (temp == TrustStates.Active) return "Active";
         if (temp == TrustStates.Executing) return "Executing";
         if (temp == TrustStates.Executed) return "Executed";
         return "";
+    }
+
+    modifier isState(TrustStates _expectedState) {
+        require(trustState == _expectedState, "Trust is not in the expected TrustState");
+    _;
     }
 }

@@ -1,46 +1,30 @@
 pragma solidity 0.8.17;
 // SPDX-License-Identifier: MIT
-
-import "./Grantor.sol";
-import "./Trustee.sol";
 import "./Beneficiary.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 
 /// @title Simple T
 /// @author sters.eth
 /// @notice Contract will allow for simple asset transfers
-contract SimpleT is Beneficiary, Trustee, Grantor {
-    event CkeckIn(address owner, uint256 newStart, uint256 newEnd);
-    event PeriodSet(address owner, uint128 newPeriod);
+contract SimpleT is Beneficiary {
 
     string public constant VERSION = "2022.10.0";
 
     string public name;
 
-    bool public assetsReleased;
-
     /// @dev the time trust was initialized
     uint256 public initializedTrust;
 
-    /// @dev the time the trustor last checked in
-    uint256 public checkInPeriodStart;
-
-    /// @dev the time at which the deadman switch expires
-    uint256 public checkInPeriodEnd;
-
-    /// @dev the number of seconds in 1 period
-    uint256 public constant SECONDS_IN_30_DAYS = 2592000;
-
-    /// @dev The number of periods after each checkin
-    uint128 public periods;
-
-    /// @dev the trust will transfer to Trustees after this period of time
-    uint256 public trustEnd;
+    using ECDSA for bytes32;
+    bytes32 public constant DED = keccak256("The Grantor is Ded");
 
     constructor(
         string memory _name,
         address _initialTrustee,
         uint128 _checkInPeriod,
         address[] memory _grantors,
+        string memory distributionType,
         address[] memory _successorTrustees,
         uint256[] memory _successorTrusteePositions,
         uint256 _successorTrusteePeriod,
@@ -51,16 +35,11 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
         name = _name;
         // Trust is initialized at deployment
         initializedTrust = block.timestamp;
-        checkInPeriodStart = block.timestamp;
-        periods = _checkInPeriod;
-        checkInPeriodEnd = checkInPeriodStart + periods * SECONDS_IN_30_DAYS;
-        trustEnd = checkInPeriodEnd;
-
-        assetsReleased = false;
 
         // Set Role Admins
-        _setRoleAdmin(INITIAL_TRUSTEE_ROLE, DEFAULT_ADMIN_ROLE);
-        _setRoleAdmin(TRUSTEE_ROLE, INITIAL_TRUSTEE_ROLE);
+        // _setRoleAdmin(INITIAL_TRUSTEE_ROLE, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(GRANTOR_ROLE, INITIAL_TRUSTEE_ROLE);
+        _setRoleAdmin(SUCCESSOR_TRUSTEE_ROLE, INITIAL_TRUSTEE_ROLE);
         _setRoleAdmin(BENEFICIARY_ROLE, INITIAL_TRUSTEE_ROLE);
 
         // Initialize roles
@@ -68,49 +47,84 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
         _setupRole(INITIAL_TRUSTEE_ROLE, msg.sender);
 
         // Setup Trust
+        addGrantors(_grantors);        
+        setDistribution(distributionType);
+        setCheckInPeriod(_checkInPeriod);
         setInitialTrustee(_initialTrustee);
-        setPeriods(_checkInPeriod);
-        addGrantors(_grantors);
-        addSuccessorTrustees(_successorTrustees);
-        addSuccessorTrustee(_initialTrustee);
+        addSuccessorTrustees(_successorTrustees, _successorTrusteePositions);
+        setSuccessorPeriod(_successorTrusteePeriod);
         setBeneficiaries(_beneficiaries, _beneficiaryPercentages);
 
+        // Finalize Roles
         if (msg.sender != _initialTrustee) {
-            grantRole(DEFAULT_ADMIN_ROLE, _initialTrustee);
             grantRole(INITIAL_TRUSTEE_ROLE, _initialTrustee);
             revokeRole(INITIAL_TRUSTEE_ROLE, msg.sender);
-            revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
         }
+        grantRole(DEFAULT_ADMIN_ROLE, address(this));
+        revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
+
     }
+
+
 
 
     /**
-     * @notice Set Period in months. Must be at least 1 month and at most 12 months.
+     * @notice  Checks that the sender signed the passed message.
      */
-    function setPeriods(uint128 newPeriod) public onlyRole(INITIAL_TRUSTEE_ROLE) {
-        require(newPeriod >= 1, "New period must be an integer greater than 0");
-        require(newPeriod <= 12, "New period must be an integer less than 13");
-        periods = newPeriod;
-        emit PeriodSet(msg.sender, newPeriod);
+    function isValidSignature(bytes calldata signature) internal view returns (bool) {
+        return DED.toEthSignedMessageHash().recover(signature) == msg.sender;
     }
+
+    /**
+     * @notice  A successor Trustee may begin the execution of an active Trust 
+     *  by passing the DED signed message.
+     * 
+     */
+    function initiateTrustExecution(bytes calldata signature) 
+        external 
+        onlyRole(SUCCESSOR_TRUSTEE_ROLE)
+        isState(TrustStates.Active) {
+
+        require(
+            isValidSignature(signature),
+            "SignatureChecker: Invalid Signature"
+        );
+        
+        uint256 successor_position = successorTrusteePosition[msg.sender];
+        require(successor_position>0, "successor_position cannot be the default value" );
+        require(
+            getExpirationTime() + (successor_position-1)*successorTrusteePeriod < block.timestamp, 
+            'This Succesor Trustee is not availble to act on this trust yet.'
+        );
+        
+        // Set the sender as the Active Trustee
+        _grantRole(ACTIVE_TRUSTEE_ROLE, _msgSender());
+        activeTrustee = _msgSender();
+
+        // Change the Admin of Successor & Beneficiary roles to the smart contract
+        _setRoleAdmin(SUCCESSOR_TRUSTEE_ROLE, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(BENEFICIARY_ROLE, DEFAULT_ADMIN_ROLE);
+
+        // Revoked Initial Trustee Roles 
+        for (uint i=0; i < initialTrustees.length; i++) {
+            _revokeRole(INITIAL_TRUSTEE_ROLE, initialTrustees[i]);
+        }
+
+        // Grantors may no longer revoke assets from trust
+        for (uint i=0; i < grantors.length; i++) {
+            _revokeRole(GRANTOR_ROLE, grantors[i]);
+        }
+
+        trustState = TrustStates.Executing;
+        activeTrusteeLastCheckInTime=block.timestamp;
+    }
+
 
     /**
      * @notice transfers fungibles to the beneficiaries
      */
-    function releaseAssets() public onlyRole(TRUSTEE_ROLE) {
-        // require(block.timestamp > checkInPeriodEnd, "Check-In Period is still live.") ;
-        assetsReleased = true;
-        // for (uint256 idx = 0; idx < beneficiaries.length; idx++) {
-        //     setApprovalForAll(beneficiaries[idx], true);
-        // }
-    }
-
-    /**
-     * @notice transfers fungibles to the beneficiaries
-     */
-    function claim() external onlyRole(BENEFICIARY_ROLE) {
-        require(assetsReleased, "SimpleT: Assets have not been released.");
-        require(_shares[msg.sender] > 0, "SimpleT: account has no shares");
+    function claim() external onlyRole(BENEFICIARY_ROLE) isState(TrustStates.Executed) {
+        require(_shares[_msgSender()] > 0, "SimpleT: account has no shares");
 
         // Check for previous payments
         // uint256 payment = releasable(token, account);
@@ -128,7 +142,7 @@ contract SimpleT is Beneficiary, Trustee, Grantor {
             amounts[i] = TOKENS_PER_GRANTOR;
         }
 
-        _safeBatchTransferFrom(address(this), msg.sender, tokenIds, amounts, "");
+        _safeBatchTransferFrom(address(this), _msgSender(), tokenIds, amounts, "");
     }
 
     /// @dev returns array of addresses with active stakers
