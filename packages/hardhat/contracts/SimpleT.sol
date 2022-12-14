@@ -15,6 +15,8 @@ contract SimpleT is Beneficiary {
 
     /// @dev the time trust was initialized
     uint256 public initializedTrust;
+    address[] public unassignedGrantors;
+
 
     using ECDSA for bytes32;
     bytes32 public constant DED = keccak256("The Grantor is Ded");
@@ -66,8 +68,6 @@ contract SimpleT is Beneficiary {
     }
 
 
-
-
     /**
      * @notice  Checks that the sender signed the passed message.
      */
@@ -112,41 +112,58 @@ contract SimpleT is Beneficiary {
 
         // Grantors may no longer revoke assets from trust
         for (uint i=0; i < grantors.length; i++) {
-            _revokeRole(GRANTOR_ROLE, grantors[i]);
+            address grantorAddress = grantors[i];
+            _revokeRole(GRANTOR_ROLE, grantorAddress);
+
+            if (!assignedAssets[grantorAddress]) {       
+                // Revisit this universal declaration
+                unassignedGrantors.push(grantorAddress);
+            }
         }
+        
+        _setRoleAdmin(GRANTOR_ROLE, ACTIVE_TRUSTEE_ROLE);        
+        // Remove grantors who did not assign assets
+        for (uint i=0; i < unassignedGrantors.length; i++) {
+            address removeAddress = unassignedGrantors[i];
+            _removeGrantor(removeAddress);
+        }
+        _setRoleAdmin(GRANTOR_ROLE, DEFAULT_ADMIN_ROLE);
+
 
         trustState = TrustStates.Executing;
         activeTrusteeLastCheckInTime=block.timestamp;
     }
 
+    function openClaims() external onlyActiveTrustee isState(TrustStates.Executing) {
+        trustState = TrustStates.Executed;
+
+    }
 
     /**
      * @notice transfers fungibles to the beneficiaries
      */
     function claim() external onlyRole(BENEFICIARY_ROLE) isState(TrustStates.Executed) {
-        require(_shares[_msgSender()] > 0, "SimpleT: account has no shares");
-
-        // Check for previous payments
-        // uint256 payment = releasable(token, account);
-        // require(payment != 0, "SimpleT: account is not due payment");
-
+        require(beneficiaryShares[_msgSender()] > 0, "SimpleT: account has no shares");
+        require( !(beneficiaryHasClaimed[_msgSender()]) , "SimpleT: Beneficary has already claimed");
+        
         uint256 totalTokens = grantors.length;
         uint256[] memory tokenIds = new uint256[](totalTokens);
         uint256[] memory amounts = new uint256[](totalTokens);
 
+        uint256 shares = beneficiaryShares[_msgSender()];
+
         // Iterate over Grantor wallets to get 1155 token IDs
         for (uint256 i = 0; i < totalTokens; i++) {
+            
             address grantorAddress = grantors[i];
-            uint256 tokenId = _tokenIds[grantorAddress];
-            tokenIds[i] = tokenId;
-            amounts[i] = TOKENS_PER_GRANTOR;
+            if (assignedAssets[grantorAddress]) {
+                uint256 tokenId = _tokenIds[grantorAddress];
+                tokenIds[i] = tokenId;
+                amounts[i] = TOKENS_PER_GRANTOR * shares / totalShares;
+            }
         }
-
+        beneficiaryHasClaimed[_msgSender()] = true;
         _safeBatchTransferFrom(address(this), _msgSender(), tokenIds, amounts, "");
     }
 
-    /// @dev returns array of addresses with active stakers
-    function getTrustAddress() external view returns (address) {
-        return address(this);
-    }
 }
