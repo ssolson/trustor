@@ -129,8 +129,6 @@ contract Trustee is Grantor {
     }
 
 
-
-
     function removeActiveTrustee() external onlyRole(SUCCESSOR_TRUSTEE_ROLE) {
         require(
             block.timestamp > getActiveTrusteeExpirationTime(), 
@@ -165,8 +163,4 @@ contract Trustee is Grantor {
     function getSuccessorTrusteeLength() public view returns (uint256) {
         return successorTrustees.length;
     }
-
-
-
-
 }
