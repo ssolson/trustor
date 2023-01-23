@@ -1,11 +1,7 @@
 pragma solidity 0.8.17;
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0
 
-
-import "./Roles.sol";
 import "./CheckIn.sol";
-
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 /// @title Grantor
 /// @author sters.eth
@@ -19,82 +15,81 @@ contract Grantor is CheckIn {
     /// @dev Array of grantor's wallets
     mapping(address => uint256) public _tokenIds;
     mapping(address => bool) public assignedAssets;
+    // mapping(address => bool) public isGrantor;
     address[] public grantors;
 
-    using Counters for Counters.Counter;
-    Counters.Counter private nextTokenId;
+
+    uint256 nextTokenId = 0;
 
     /**  @dev set the possible Trust States */
     enum DistributionTypes {proRata, perStirpes}
     DistributionTypes public distributionType;
     uint256 public constant DECIMALS_PER_SHARE = 1 * 10**18;
 
-
-    function checkDistributionValueByKey (string memory _distribution) internal pure returns (DistributionTypes) {        
-        bytes memory distribution = bytes(_distribution);
-        bytes32 Hash = keccak256(distribution);
-        
-        if (Hash == keccak256("proRata")) return DistributionTypes.proRata;
-        if (Hash == keccak256("perStirpes")) return DistributionTypes.perStirpes;
-        revert();
-    }
-
-      
+     
     function setDistribution(string memory _distribution) public onlyInitialTrustee {
-        distributionType = checkDistributionValueByKey(_distribution);
+        if (keccak256(bytes(_distribution)) == keccak256("proRata")) {
+             distributionType = DistributionTypes.proRata;
+        } else if (keccak256(bytes(_distribution)) == keccak256("perStirpes")) {
+            distributionType = DistributionTypes.perStirpes;
+        } else {
+            revert();
+        }
     }
-        
+
     
     modifier isDistribution(DistributionTypes _expectedDistribution) {
         require(distributionType == _expectedDistribution, "Not the expected distribution method.");
-    _;
+        _;
     }
 
-
-    function returnDistributionType() external view returns (string memory) {
-        DistributionTypes temp = distributionType;
-        if (temp == DistributionTypes.proRata) return "proRata";
-        if (temp == DistributionTypes.perStirpes) return "perStirpes";
-        return "Distribution Not Set";
-    }
+    // function returnDistributionType() external view returns (string memory) {
+    //     DistributionTypes temp = distributionType;
+    //     if (temp == DistributionTypes.proRata) return "proRata";
+    //     if (temp == DistributionTypes.perStirpes) return "perStirpes";
+    //     return "Distribution Not Set";
+    // }
 
     /**
      * @dev Initial Trustee  may remove an address from grantor array.
      * @param _grantorAddresses address of trustee.
      */
     function addGrantors(address[] memory _grantorAddresses) public onlyInitialTrustee {
-        for (uint256 idx = 0; idx < _grantorAddresses.length; idx++) {
-            addGrantor(_grantorAddresses[idx]);
+        for (uint256 i = 0; i < _grantorAddresses.length; i++) {
+            // addGrantor(_grantorAddresses[idx]);
+            address _grantorAddress = _grantorAddresses[i];
+            require(_grantorAddress != address(0), "Grantor: address can not be zero address");
+            // require(!isGrantor[_grantorAddress], "Grantor: address already grantor");
+            require(!findIsAGrantor(_grantorAddress), "Grantor: address already grantor");
+            uint256 _tokenId = nextTokenId;
+            grantors.push(_grantorAddress);
+            // isGrantor[_grantorAddress]=true;
+            _tokenIds[_grantorAddress] = _tokenId;
+            _mint(_grantorAddress, _tokenId, TOKENS_PER_GRANTOR, "");
+            nextTokenId+=1;
+            grantRole(GRANTOR_ROLE, _grantorAddress);
+            emit AddedGrantor(_msgSender(), _grantorAddress);
         }
     }
 
-    /**
-     * @dev Owner may add an addresses with owned assets.
-     * @param _grantorAddress address of grantor.
-     */
-    function addGrantor(address _grantorAddress) public onlyInitialTrustee {
-        require(_grantorAddress != address(0), "Grantor: address can not be zero address");
-        require(!findIsAGrantor(_grantorAddress), "Grantor: address already grantor");
-        uint256 _tokenId = nextTokenId.current();
-        grantors.push(_grantorAddress);
-        _tokenIds[_grantorAddress] = _tokenId;
-        _mint(_grantorAddress, _tokenId, TOKENS_PER_GRANTOR, "");
-        nextTokenId.increment();
-        grantRole(GRANTOR_ROLE, _grantorAddress);
-        emit AddedGrantor(_msgSender(), _grantorAddress);
-    }
 
     /**
-     * @notice  Release right title and interest of assets to the trust
+     * @notice  Release right, title, and interest of assets to the trust
      * @dev Owner may add an addresses with owned assets.
      */
     function assignAssetsToTrust() public onlyRole(GRANTOR_ROLE) {
         uint256 _tokenId = _tokenIds[_msgSender()];
-        require(balanceOf(_msgSender(), _tokenId) > 0, "Grantor: has no tokens");
-        require(balanceOf(_msgSender(), _tokenId) == TOKENS_PER_GRANTOR, "Grantor: does not have enough tokens");
+        require(
+            balanceOf(_msgSender(), _tokenId) > 0, 
+            "Grantor: has no tokens"
+        );
+        require(
+            balanceOf(_msgSender(), _tokenId) == TOKENS_PER_GRANTOR, 
+            "Grantor: does not have enough tokens"
+        );
         safeTransferFrom(_msgSender(), address(this), _tokenId, TOKENS_PER_GRANTOR, "");
         assignedAssets[_msgSender()] = true;
-        if (trustState == TrustStates.Inactive) {
+        if ( trustState == TrustStates.Inactive ) {
             trustState = TrustStates.Active;
         }
         emit AssetsAssigned(_msgSender());
@@ -123,11 +118,20 @@ contract Grantor is CheckIn {
                 }
 
                 if (assignedAssets[_grantorAddress]) {
-                    _burn(address(this), _tokenIds[_grantorAddress], TOKENS_PER_GRANTOR);
+                    _burn(
+                        address(this), 
+                        _tokenIds[_grantorAddress], 
+                        TOKENS_PER_GRANTOR
+                    );
                 } else {
-                    _burn(_grantorAddress, _tokenIds[_grantorAddress], TOKENS_PER_GRANTOR);
+                    _burn(
+                        _grantorAddress, 
+                        _tokenIds[_grantorAddress], 
+                        TOKENS_PER_GRANTOR
+                    );
                 }
-
+                
+                // isGrantor[_grantorAddress]=false;
                 assignedAssets[_grantorAddress] = false;
                 _checkTrustState();
 
@@ -152,27 +156,17 @@ contract Grantor is CheckIn {
     function _checkTrustState() internal {
         trustState = TrustStates.Inactive;
         for (
-            uint256 idx = 0;
-            idx < grantors.length;
-            idx++
+            uint256 i = 0;
+            i < grantors.length;
+            i++
         ) {
-            if( assignedAssets[grantors[idx]] == true ){
+            if( assignedAssets[grantors[i]] == true ){
                 trustState = TrustStates.Active;
                 break;
             }
         }
     }
 
-    // /// @dev deletes all address from grantor array
-    // function resetGrantor() public onlyRole(GRANTOR_ROLE) {
-    //     delete grantors;
-    //     emit ResetGrantors(msg.sender);
-    // }
-
-    /// @dev returns array of addresses active grantors
-    function getGrantors() external view returns (address[] memory) {
-        return grantors;
-    }
 
     /// @dev iterates over grantors array to find passed address
     function findIsAGrantor(address grantor) public view returns (bool isAGrantor) {

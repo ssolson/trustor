@@ -1,5 +1,5 @@
 pragma solidity 0.8.17;
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
@@ -9,7 +9,8 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 /// @title Roles
 /// @author sters.eth
 /// @notice Contract defines roles and ERC1155
-abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
+contract Roles is ERC1155Holder, ERC1155, AccessControl {
+// contract Roles is ERC1155, AccessControl {
     uint256 public constant TOKENS_PER_GRANTOR = 1 * 10**18;
 
     /**  @dev set the possible Trust States */
@@ -17,10 +18,6 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
     TrustStates public trustState;
     TrustStates public constant defaultState = TrustStates.Inactive;
 
-    /** 
-    @dev GRANTOR_ADMIN_ROLE serves as a backup to the INITIAL_TRUSTEE_ROLE
-    */
-    // bytes32 public constant GRANTOR_ADMIN_ROLE = keccak256("GRANTOR_ADMIN_ROLE");
 
     /**  
     @dev GRANTOR_ROLE can perform grantor functions the grantor can add or 
@@ -63,7 +60,7 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
 
     constructor() ERC1155("") {}
 
-    function setURI(string memory newuri) public onlyRole(GRANTOR_ROLE) {
+    function setURI(string memory newuri) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _setURI(newuri);
     }
 
@@ -71,6 +68,7 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
         public
         view
         override(ERC1155Receiver, ERC1155, AccessControl)
+        // override(ERC1155, AccessControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -99,15 +97,24 @@ abstract contract Roles is ERC1155Holder, ERC1155, AccessControl {
 
     function returnTrustState() external view returns (string memory) {
         TrustStates temp = trustState;
-        if (temp == TrustStates.Inactive) return "Inactive";
-        if (temp == TrustStates.Active) return "Active";
-        if (temp == TrustStates.Executing) return "Executing";
-        if (temp == TrustStates.Executed) return "Executed";
-        return "";
+        if (temp == TrustStates.Inactive) {return "Inactive";}
+        else if (temp == TrustStates.Active) {return "Active";}
+        else if (temp == TrustStates.Executing) {return "Executing";}
+        else if (temp == TrustStates.Executed) {return "Executed";}
+        else {return "";}
     }
 
-    modifier isState(TrustStates _expectedState) {
-        require(trustState == _expectedState, "Trust is not in the expected TrustState");
-    _;
+
+    function _isState(TrustStates _expectedState) private view {
+        require(
+            trustState == _expectedState, 
+            "Trust is not in the expected TrustState"
+        );
+    }
+
+
+    modifier isState(TrustStates expectedState) {
+        _isState(expectedState);
+        _;
     }
 }

@@ -1,5 +1,5 @@
 pragma solidity 0.8.17;
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0
 import "./Beneficiary.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -8,15 +8,12 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 /// @author sters.eth
 /// @notice Contract will allow for simple asset transfers
 contract SimpleT is Beneficiary {
-
     string public constant VERSION = "2022.10.0";
-
     string public name;
 
     /// @dev the time trust was initialized
     uint256 public initializedTrust;
     address[] public unassignedGrantors;
-
 
     using ECDSA for bytes32;
     bytes32 public constant DED = keccak256("The Grantor is Ded");
@@ -82,9 +79,11 @@ contract SimpleT is Beneficiary {
      */
     function initiateTrustExecution(bytes calldata signature) 
         external 
-        onlyRole(SUCCESSOR_TRUSTEE_ROLE)
-        isState(TrustStates.Active) {
-
+        onlyRole(SUCCESSOR_TRUSTEE_ROLE) {
+        require(
+            trustState == TrustStates.Active, 
+            "Trust is not in the expected TrustState"
+        );
         require(
             isValidSignature(signature),
             "SignatureChecker: Invalid Signature"
@@ -132,17 +131,37 @@ contract SimpleT is Beneficiary {
 
         trustState = TrustStates.Executing;
         activeTrusteeLastCheckInTime=block.timestamp;
+
+        // Set generation 1 to the beneficiaries specified at Trust execution
+        // Default value is 0
+        generations[1] = beneficiaries;
+        for (uint i=0; i < beneficiaries.length; i++) {
+            address currentBeneficiary= beneficiaries[i];
+            beneficiaryGeneration[currentBeneficiary]=1;
+        }
     }
 
-    function openClaims() external onlyActiveTrustee isState(TrustStates.Executing) {
+    function openClaims() 
+      external onlyActiveTrustee
+      isState(TrustStates.Executing) {
+        // require(
+        //     trustState == TrustStates.Executing, 
+        //     "Trust is not in the expected TrustState"
+        // );
         trustState = TrustStates.Executed;
-
     }
 
     /**
      * @notice transfers fungibles to the beneficiaries
      */
-    function claim() external onlyRole(BENEFICIARY_ROLE) isState(TrustStates.Executed) {
+    function claim() 
+        external 
+        onlyRole(BENEFICIARY_ROLE) 
+        isState(TrustStates.Executed) {
+            // require(
+            //     trustState == TrustStates.Executing, 
+            //     "Trust is not in the expected TrustState"
+            // );
         require(beneficiaryShares[_msgSender()] > 0, "SimpleT: account has no shares");
         require( !(beneficiaryHasClaimed[_msgSender()]) , "SimpleT: Beneficary has already claimed");
         
