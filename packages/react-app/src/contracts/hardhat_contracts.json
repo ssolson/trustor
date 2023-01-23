@@ -5,7 +5,7 @@
       "chainId": "31337",
       "contracts": {
         "SimpleT": {
-          "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+          "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
           "abi": [
             {
               "inputs": [
@@ -16,13 +16,33 @@
                 },
                 {
                   "internalType": "address",
-                  "name": "_grantor",
+                  "name": "_initialTrustee",
                   "type": "address"
                 },
                 {
-                  "internalType": "address",
-                  "name": "_initialTrustee",
-                  "type": "address"
+                  "internalType": "uint128",
+                  "name": "_checkInPeriod",
+                  "type": "uint128"
+                },
+                {
+                  "internalType": "address[]",
+                  "name": "_grantors",
+                  "type": "address[]"
+                },
+                {
+                  "internalType": "address[]",
+                  "name": "_successorTrustees",
+                  "type": "address[]"
+                },
+                {
+                  "internalType": "uint256[]",
+                  "name": "_successorTrusteePositions",
+                  "type": "uint256[]"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "_successorTrusteePeriod",
+                  "type": "uint256"
                 },
                 {
                   "internalType": "address[]",
@@ -31,7 +51,7 @@
                 },
                 {
                   "internalType": "uint256[]",
-                  "name": "_percentages",
+                  "name": "_beneficiaryPercentages",
                   "type": "uint256[]"
                 }
               ],
@@ -73,7 +93,7 @@
                   "type": "address"
                 }
               ],
-              "name": "AddedTrustee",
+              "name": "AddedSccessorTrustee",
               "type": "event"
             },
             {
@@ -99,6 +119,19 @@
                 }
               ],
               "name": "ApprovalForAll",
+              "type": "event"
+            },
+            {
+              "anonymous": false,
+              "inputs": [
+                {
+                  "indexed": false,
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                }
+              ],
+              "name": "AssetsAssigned",
               "type": "event"
             },
             {
@@ -194,9 +227,9 @@
                 },
                 {
                   "indexed": false,
-                  "internalType": "uint256",
+                  "internalType": "uint128",
                   "name": "newPeriod",
-                  "type": "uint256"
+                  "type": "uint128"
                 }
               ],
               "name": "PeriodSet",
@@ -250,7 +283,7 @@
                   "type": "address"
                 }
               ],
-              "name": "ResetGrantor",
+              "name": "ResetGrantors",
               "type": "event"
             },
             {
@@ -339,6 +372,25 @@
                 }
               ],
               "name": "RoleRevoked",
+              "type": "event"
+            },
+            {
+              "anonymous": false,
+              "inputs": [
+                {
+                  "indexed": false,
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "indexed": false,
+                  "internalType": "address",
+                  "name": "trusteeAddress",
+                  "type": "address"
+                }
+              ],
+              "name": "SetInitialTrustee",
               "type": "event"
             },
             {
@@ -435,6 +487,25 @@
               "type": "event"
             },
             {
+              "anonymous": false,
+              "inputs": [
+                {
+                  "indexed": false,
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "indexed": false,
+                  "internalType": "uint128",
+                  "name": "newPeriod",
+                  "type": "uint128"
+                }
+              ],
+              "name": "successorTrusteePeriodSet",
+              "type": "event"
+            },
+            {
               "inputs": [],
               "name": "BENEFICIARY_ROLE",
               "outputs": [
@@ -450,19 +521,6 @@
             {
               "inputs": [],
               "name": "DEFAULT_ADMIN_ROLE",
-              "outputs": [
-                {
-                  "internalType": "bytes32",
-                  "name": "",
-                  "type": "bytes32"
-                }
-              ],
-              "stateMutability": "view",
-              "type": "function"
-            },
-            {
-              "inputs": [],
-              "name": "GRANTOR_ADMIN_ROLE",
               "outputs": [
                 {
                   "internalType": "bytes32",
@@ -618,12 +676,51 @@
             {
               "inputs": [
                 {
+                  "internalType": "address[]",
+                  "name": "_grantorAddresses",
+                  "type": "address[]"
+                }
+              ],
+              "name": "addGrantors",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
                   "internalType": "address",
                   "name": "trusteeAddress",
                   "type": "address"
                 }
               ],
-              "name": "addTrustee",
+              "name": "addSuccessorTrustee",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address[]",
+                  "name": "trusteeAddresses",
+                  "type": "address[]"
+                }
+              ],
+              "name": "addSuccessorTrustees",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "_grantorAddress",
+                  "type": "address"
+                }
+              ],
+              "name": "adminRemoveGrantor",
               "outputs": [],
               "stateMutability": "nonpayable",
               "type": "function"
@@ -646,6 +743,25 @@
               "name": "assignAssetsToTrust",
               "outputs": [],
               "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "",
+                  "type": "address"
+                }
+              ],
+              "name": "assignedAssets",
+              "outputs": [
+                {
+                  "internalType": "bool",
+                  "name": "",
+                  "type": "bool"
+                }
+              ],
+              "stateMutability": "view",
               "type": "function"
             },
             {
@@ -746,6 +862,38 @@
               "name": "claim",
               "outputs": [],
               "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "defaultState",
+              "outputs": [
+                {
+                  "internalType": "enum Roles.TrustStates",
+                  "name": "",
+                  "type": "uint8"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "grantor",
+                  "type": "address"
+                }
+              ],
+              "name": "findIsAGrantor",
+              "outputs": [
+                {
+                  "internalType": "bool",
+                  "name": "isAGrantor",
+                  "type": "bool"
+                }
+              ],
+              "stateMutability": "view",
               "type": "function"
             },
             {
@@ -916,6 +1064,13 @@
                 }
               ],
               "name": "grantRole",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "grantorRemoveSelf",
               "outputs": [],
               "stateMutability": "nonpayable",
               "type": "function"
@@ -1150,6 +1305,19 @@
               "type": "function"
             },
             {
+              "inputs": [],
+              "name": "returnState",
+              "outputs": [
+                {
+                  "internalType": "string",
+                  "name": "",
+                  "type": "string"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
               "inputs": [
                 {
                   "internalType": "bytes32",
@@ -1272,12 +1440,38 @@
             {
               "inputs": [
                 {
+                  "internalType": "address",
+                  "name": "initialTrusteeAddress",
+                  "type": "address"
+                }
+              ],
+              "name": "setInitialTrustee",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
                   "internalType": "uint128",
                   "name": "newPeriod",
                   "type": "uint128"
                 }
               ],
               "name": "setPeriods",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint128",
+                  "name": "newPeriod",
+                  "type": "uint128"
+                }
+              ],
+              "name": "setSuccessorPeriod",
               "outputs": [],
               "stateMutability": "nonpayable",
               "type": "function"
@@ -1293,6 +1487,19 @@
               "name": "setURI",
               "outputs": [],
               "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "successorTrusteePeriod",
+              "outputs": [
+                {
+                  "internalType": "uint128",
+                  "name": "",
+                  "type": "uint128"
+                }
+              ],
+              "stateMutability": "view",
               "type": "function"
             },
             {
@@ -1322,6 +1529,32 @@
                   "internalType": "uint256",
                   "name": "",
                   "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "trustState",
+              "outputs": [
+                {
+                  "internalType": "enum Roles.TrustStates",
+                  "name": "",
+                  "type": "uint8"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "trustee",
+              "outputs": [
+                {
+                  "internalType": "address",
+                  "name": "",
+                  "type": "address"
                 }
               ],
               "stateMutability": "view",
