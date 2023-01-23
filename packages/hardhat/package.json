@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
-  "devDependencies": {},
+  "devDependencies": {
+    "hardhat-contract-sizer": "^2.6.1"
+  },
   "dependencies": {
     "@eth-optimism/hardhat-ovm": "^0.2.2",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.3",
