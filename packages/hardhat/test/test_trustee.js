@@ -854,11 +854,13 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
         .connect(succesorTrustee)
         .initiateTrustExecution(signedMessage);
 
+      // Get Beneficiary 2 details
       const Beneficiary2 = wallets["Beneficiary2"].address;
       const shares_Beneficiary2_0 = await simpleT.beneficiaryShares(
         Beneficiary2
       );
 
+      // Specify that a beneficiary deceased pro-rata
       await expect(
         await simpleT
           .connect(succesorTrustee)

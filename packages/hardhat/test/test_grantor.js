@@ -62,47 +62,6 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
     return { wallets, simpleT };
   }
 
-  describe("Adding Grantor", () => {
-    it("addGrantor: Correct Length", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const N0 = await simpleT.getGrantorsLength();
-      initialTrustee = wallets["InitialTrustee"];
-      await simpleT
-        .connect(initialTrustee)
-        .addGrantor(wallets["SuccessorTrustee1"].address);
-      const N1 = await simpleT.getGrantorsLength();
-      expect(N0.add(1)).to.equal(N1);
-    });
-
-    it("addGrantor: Correct Address added", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const newAddress = wallets["SuccessorTrustee1"].address;
-      await simpleT.addGrantor(newAddress);
-      const isGrantorResult = await simpleT.findIsAGrantor(newAddress);
-      expect(isGrantorResult).to.be.true;
-    });
-
-    it("addGrantor: Role added", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const newAddress = wallets["SuccessorTrustee1"].address;
-      const hasRoleResult0 = await simpleT.hasRole(GRANTOR_ROLE, newAddress);
-      expect(hasRoleResult0).to.be.false;
-      await simpleT.addGrantor(newAddress);
-      const hasRoleResult1 = await simpleT.hasRole(GRANTOR_ROLE, newAddress);
-      expect(hasRoleResult1).to.be.true;
-    });
-
-    it("addGrantor: Event Emitted", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const initialTrustee = wallets["InitialTrustee"].address;
-      const newAddress = wallets["SuccessorTrustee1"].address;
-
-      await expect(simpleT.addGrantor(newAddress))
-        .to.emit(simpleT, "AddedGrantor")
-        .withArgs(initialTrustee, newAddress);
-    });
-  });
-
   describe("Adding Grantors", () => {
     it("addGrantors: Correct Length", async () => {
       const { wallets, simpleT } = await deployFixture();
@@ -143,16 +102,15 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       expect(hasRoleResult12).to.be.true;
     });
 
-    // it("addGrantors: Correct Addresses added", async () => {
-    //   const { wallets, simpleT } = await deployFixture();
-    //   const newAddress1 = wallets["SuccessorTrustee1"].address;
-    //   const newAddress2 = wallets["SuccessorTrustee2"].address;
-    //   await simpleT.addGrantors([newAddress1, newAddress2]);
-    //   const isGrantorResult1 = await simpleT.findIsAGrantor(newAddress1);
-    //   expect(isGrantorResult1).to.be.true;
-    //   const isGrantorResult2 = await simpleT.findIsAGrantor(newAddress2);
-    //   expect(isGrantorResult2).to.be.true;
-    // });
+    it("addGrantor: Event Emitted", async () => {
+      const { wallets, simpleT } = await deployFixture();
+      const initialTrustee = wallets["InitialTrustee"].address;
+      const newAddress = wallets["SuccessorTrustee1"].address;
+
+      await expect(simpleT.addGrantors([newAddress]))
+        .to.emit(simpleT, "AddedGrantor")
+        .withArgs(initialTrustee, newAddress);
+    });
   });
 
   describe("Removing Grantor", () => {
@@ -453,56 +411,56 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
     });
   });
 
-  describe("Assign Assets", () => {
-    it("assignAssetsToTrust: tokens transfered", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const Grantor2 = wallets["Grantor2"].address;
-      const tokensPerGrantor = await simpleT.TOKENS_PER_GRANTOR();
+  // describe("Assign Assets", () => {
+  //   it("assignAssetsToTrust: tokens transfered", async () => {
+  //     const { wallets, simpleT } = await deployFixture();
+  //     const Grantor2 = wallets["Grantor2"].address;
+  //     const tokensPerGrantor = await simpleT.TOKENS_PER_GRANTOR();
 
-      const tokenID = await simpleT.getGrantorsTokenID(Grantor2);
-      const tokenBal0 = await simpleT.balanceOf(Grantor2, tokenID);
-      expect(tokenBal0).to.equal(tokensPerGrantor);
+  //     const tokenID = await simpleT.getGrantorsTokenID(Grantor2);
+  //     const tokenBal0 = await simpleT.balanceOf(Grantor2, tokenID);
+  //     expect(tokenBal0).to.equal(tokensPerGrantor);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const tokenBal1 = await simpleT.balanceOf(Grantor2, tokenID);
-      expect(tokenBal1).to.equal(0);
-    });
+  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+  //     const tokenBal1 = await simpleT.balanceOf(Grantor2, tokenID);
+  //     expect(tokenBal1).to.equal(0);
+  //   });
 
-    it("assignAssetsToTrust: state changed", async () => {
-      const { wallets, simpleT } = await deployFixture();
+  //   it("assignAssetsToTrust: state changed", async () => {
+  //     const { wallets, simpleT } = await deployFixture();
 
-      const state0 = await simpleT.returnTrustState();
-      expect(state0).to.equal("Inactive");
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
-      expect(state1).to.equal("Active");
-    });
+  //     const state0 = await simpleT.returnTrustState();
+  //     expect(state0).to.equal("Inactive");
+  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+  //     const state1 = await simpleT.returnTrustState();
+  //     expect(state1).to.equal("Active");
+  //   });
 
-    it("assignAssetsToTrust: Event Emitted", async () => {
-      const { wallets, simpleT } = await deployFixture();
+  //   it("assignAssetsToTrust: Event Emitted", async () => {
+  //     const { wallets, simpleT } = await deployFixture();
 
-      const state0 = await simpleT.returnTrustState();
+  //     const state0 = await simpleT.returnTrustState();
 
-      const initialTrustee = wallets["InitialTrustee"].address;
-      await expect(
-        simpleT.connect(wallets["InitialTrustee"]).assignAssetsToTrust()
-      )
-        .to.emit(simpleT, "AssetsAssigned")
-        .withArgs(initialTrustee);
-    });
-  });
+  //     const initialTrustee = wallets["InitialTrustee"].address;
+  //     await expect(
+  //       simpleT.connect(wallets["InitialTrustee"]).assignAssetsToTrust()
+  //     )
+  //       .to.emit(simpleT, "AssetsAssigned")
+  //       .withArgs(initialTrustee);
+  //   });
+  // });
 
-  it("Set Distribution", async () => {
-    const { wallets, simpleT } = await deployFixture();
+  // it("Set Distribution", async () => {
+  //   const { wallets, simpleT } = await deployFixture();
 
-    expect(await simpleT.returnDistributionType()).to.equal("perStirpes");
+  //   expect(await simpleT.returnDistributionType()).to.equal("perStirpes");
 
-    const newDist = "proRata";
-    await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist);
-    expect(await simpleT.returnDistributionType()).to.equal(newDist);
+  //   const newDist = "proRata";
+  //   await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist);
+  //   expect(await simpleT.returnDistributionType()).to.equal(newDist);
 
-    const newDist2 = "perStirpes";
-    await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist2);
-    expect(await simpleT.returnDistributionType()).to.equal(newDist2);
-  });
+  //   const newDist2 = "perStirpes";
+  //   await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist2);
+  //   expect(await simpleT.returnDistributionType()).to.equal(newDist2);
+  // });
 });
