@@ -1,6 +1,9 @@
 const { use, expect } = require("chai");
 const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
+const {
+  time,
+  loadFixture,
+} = require("@nomicfoundation/hardhat-network-helpers");
 
 const DEFAULT_ADMIN_ROLE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -47,8 +50,15 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       Shares,
     ];
 
-    const SimpleT = await ethers.getContractFactory("SimpleT");
-    const simpleT = await SimpleT.deploy(...argz);
+    const LoadedStaticRouter = await ethers.getContractFactory("Router");
+    const router = await LoadedStaticRouter.connect(InitialTrustee).deploy();
+    await router.deployed();
+
+    const routerAddress = router.address;
+
+    const Initialize = await ethers.getContractFactory("Initialize");
+    const initialize = await Initialize.attach(routerAddress);
+    await initialize.initializeInitializableModule(...argz);
 
     const wallets = {
       InitialTrustee: InitialTrustee,
@@ -59,139 +69,219 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       Beneficiary2: Beneficiary2,
     };
 
-    return { wallets, simpleT };
+    return { wallets, routerAddress };
   }
 
   describe("Adding Grantors", () => {
     it("addGrantors: Correct Length", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
       const newAddress1 = wallets["SuccessorTrustee1"].address;
       const newAddress2 = wallets["SuccessorTrustee2"].address;
 
-      const N0 = await simpleT.getGrantorsLength();
-      await simpleT.addGrantors([newAddress1, newAddress2]);
-      const N1 = await simpleT.getGrantorsLength();
+      const N0 = await grantor.getGrantorsLength();
+      await grantor.addGrantors([newAddress1, newAddress2]);
+      const N1 = await grantor.getGrantorsLength();
       expect(N0.add(2)).to.equal(N1);
     });
 
     it("addGrantors: Correct Addresses added", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
       const newAddress1 = wallets["SuccessorTrustee1"].address;
       const newAddress2 = wallets["SuccessorTrustee2"].address;
-      await simpleT.addGrantors([newAddress1, newAddress2]);
-      const isGrantorResult1 = await simpleT.findIsAGrantor(newAddress1);
+      await grantor.addGrantors([newAddress1, newAddress2]);
+      const isGrantorResult1 = await grantor.findIsAGrantor(newAddress1);
       expect(isGrantorResult1).to.be.true;
-      const isGrantorResult2 = await simpleT.findIsAGrantor(newAddress2);
+      const isGrantorResult2 = await grantor.findIsAGrantor(newAddress2);
       expect(isGrantorResult2).to.be.true;
     });
 
     it("addGrantors: Role added", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+
       const newAddress1 = wallets["SuccessorTrustee1"].address;
       const newAddress2 = wallets["SuccessorTrustee2"].address;
-      const hasRoleResult01 = await simpleT.hasRole(GRANTOR_ROLE, newAddress1);
-      const hasRoleResult02 = await simpleT.hasRole(GRANTOR_ROLE, newAddress2);
+      const hasRoleResult01 = await access.hasRole(GRANTOR_ROLE, newAddress1);
+      const hasRoleResult02 = await access.hasRole(GRANTOR_ROLE, newAddress2);
       expect(hasRoleResult01).to.be.false;
       expect(hasRoleResult02).to.be.false;
 
-      await simpleT.addGrantors([newAddress1, newAddress2]);
+      await grantor.addGrantors([newAddress1, newAddress2]);
 
-      const hasRoleResult11 = await simpleT.hasRole(GRANTOR_ROLE, newAddress1);
-      const hasRoleResult12 = await simpleT.hasRole(GRANTOR_ROLE, newAddress2);
+      const hasRoleResult11 = await access.hasRole(GRANTOR_ROLE, newAddress1);
+      const hasRoleResult12 = await access.hasRole(GRANTOR_ROLE, newAddress2);
       expect(hasRoleResult11).to.be.true;
       expect(hasRoleResult12).to.be.true;
     });
 
+    it("addGrantors: Mint Tokens", async () => {
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const ERC1155 = await ethers.getContractFactory("ERC1155");
+      const erc1155 = await ERC1155.attach(routerAddress);
+
+      // Get Tokens per grantor constant
+      const tokensPerGrantor = await grantor.getTokensPerGrantor();
+
+      // New Grantors to Add
+      const newAddress1 = wallets["SuccessorTrustee1"].address;
+      const newAddress2 = wallets["SuccessorTrustee2"].address;
+
+      // Add Grantors
+      await grantor.addGrantors([newAddress1, newAddress2]);
+
+      // Get Grantor Tokens
+      const newgrantor1Id = await grantor.getGrantorsTokenID(newAddress1);
+      const newgrantor2Id = await grantor.getGrantorsTokenID(newAddress2);
+
+      // Get Token Balances
+      const bal1 = await erc1155.balanceOf(newAddress1, newgrantor1Id);
+      const bal2 = await erc1155.balanceOf(newAddress2, newgrantor2Id);
+
+      // Should be equal to tokens per grantor
+      expect(bal1).to.equal(tokensPerGrantor);
+      expect(bal2).to.equal(tokensPerGrantor);
+    });
+
     it("addGrantor: Event Emitted", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
       const initialTrustee = wallets["InitialTrustee"].address;
       const newAddress = wallets["SuccessorTrustee1"].address;
 
-      await expect(simpleT.addGrantors([newAddress]))
-        .to.emit(simpleT, "AddedGrantor")
+      await expect(grantor.addGrantors([newAddress]))
+        .to.emit(grantor, "AddedGrantor")
         .withArgs(initialTrustee, newAddress);
     });
   });
 
   describe("Removing Grantor", () => {
     it("grantorRemoveSelf: Correct Length", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getGrantorsLength();
-      await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
-      const N1 = await simpleT.getGrantorsLength();
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
+      const N0 = await grantor.getGrantorsLength();
+      await grantor.connect(wallets["Grantor2"]).grantorRemoveSelf();
+      const N1 = await grantor.getGrantorsLength();
       expect(N0.sub(1)).to.equal(N1);
 
-      await simpleT.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
-      const N2 = await simpleT.getGrantorsLength();
+      await grantor.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
+      const N2 = await grantor.getGrantorsLength();
       expect(N1.sub(1)).to.equal(N2);
     });
 
     it("grantorRemoveSelf: Correct Addresses removed", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
       const removeAddress = wallets["Grantor2"].address;
 
-      const isGrantorResult1 = await simpleT.findIsAGrantor(removeAddress);
+      const isGrantorResult1 = await grantor.findIsAGrantor(removeAddress);
       expect(isGrantorResult1).to.be.true;
 
-      await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
-      const isGrantorResult2 = await simpleT.findIsAGrantor(removeAddress);
+      await grantor.connect(wallets["Grantor2"]).grantorRemoveSelf();
+      const isGrantorResult2 = await grantor.findIsAGrantor(removeAddress);
       expect(isGrantorResult2).to.be.false;
 
       const removeAddress2 = wallets["InitialTrustee"].address;
-      const isGrantorResult3 = await simpleT.findIsAGrantor(removeAddress2);
+      const isGrantorResult3 = await grantor.findIsAGrantor(removeAddress2);
       expect(isGrantorResult3).to.be.true;
-      await simpleT.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
-      const isGrantorResult4 = await simpleT.findIsAGrantor(removeAddress2);
+      await grantor.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
+      const isGrantorResult4 = await grantor.findIsAGrantor(removeAddress2);
       expect(isGrantorResult4).to.be.false;
     });
 
     it("grantorRemoveSelf: Role removed", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+
       const removeAddress = wallets["Grantor2"].address;
-      const hasRoleResult1 = await simpleT.hasRole(GRANTOR_ROLE, removeAddress);
+      const hasRoleResult1 = await access.hasRole(GRANTOR_ROLE, removeAddress);
       expect(hasRoleResult1).to.be.true;
 
-      await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
-      const hasRoleResult2 = await simpleT.hasRole(GRANTOR_ROLE, removeAddress);
+      await grantor.connect(wallets["Grantor2"]).grantorRemoveSelf();
+      const hasRoleResult2 = await access.hasRole(GRANTOR_ROLE, removeAddress);
       expect(hasRoleResult2).to.be.false;
 
       const removeAddress2 = wallets["InitialTrustee"].address;
-      const hasRoleResult3 = await simpleT.hasRole(
-        GRANTOR_ROLE,
-        removeAddress2
-      );
+      const hasRoleResult3 = await access.hasRole(GRANTOR_ROLE, removeAddress2);
       expect(hasRoleResult3).to.be.true;
 
-      await simpleT.grantorRemoveSelf();
-      const hasRoleResult4 = await simpleT.hasRole(
-        GRANTOR_ROLE,
-        removeAddress2
-      );
+      await grantor.grantorRemoveSelf();
+      const hasRoleResult4 = await access.hasRole(GRANTOR_ROLE, removeAddress2);
       expect(hasRoleResult4).to.be.false;
     });
 
     it("grantorRemoveSelf: Tokens Burned", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const ERC1155 = await ethers.getContractFactory("ERC1155");
+      const erc1155 = await ERC1155.attach(routerAddress);
+
+      // Tokens per Grantor constant
+      const tokensPerGrantor = await grantor.getTokensPerGrantor();
+
+      // Grantor address to remove
       const removeAddress = wallets["Grantor2"].address;
-      const tokensPerGrantor = await simpleT.TOKENS_PER_GRANTOR();
-      const tokenID = await simpleT.getGrantorsTokenID(removeAddress);
-      const tokenBal1 = await simpleT.balanceOf(removeAddress, tokenID);
-      expect(tokenBal1).to.equal(tokensPerGrantor);
 
-      await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
-      const tokenBal2 = await simpleT.balanceOf(removeAddress, tokenID);
-      expect(tokenBal2).to.equal(0);
+      // Get Grantor's token ID and balance
+      const tokenID = await grantor.getGrantorsTokenID(removeAddress);
+      const tokenBal_1 = await erc1155.balanceOf(removeAddress, tokenID);
+      expect(tokenBal_1).to.equal(tokensPerGrantor);
+
+      // Remove the Grantor
+      await grantor.connect(wallets["Grantor2"]).grantorRemoveSelf();
+
+      // Tokens should be burned
+      const tokenBal_2 = await erc1155.balanceOf(removeAddress, tokenID);
+      expect(tokenBal_2).to.equal(0);
     });
 
     it("grantorRemoveSelf: Event Emitted", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const initialTrustee = wallets["InitialTrustee"].address;
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
+      // Wallet to be removed
       const removeAddress = wallets["Grantor2"].address;
 
-      await expect(simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf())
-        .to.emit(simpleT, "RemovedGrantor")
+      // Remove and check event
+      await expect(grantor.connect(wallets["Grantor2"]).grantorRemoveSelf())
+        .to.emit(grantor, "RemovedGrantor")
         .withArgs(removeAddress, removeAddress);
     });
 
@@ -200,24 +290,32 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
      * the grantor.
      * */
     it("grantorRemoveSelf: State changed 1", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getGrantorsLength();
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+
+      // Check number of Grantors
+      const N0 = await grantor.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnTrustState();
+      const state0 = await checkIn.returnTrustState();
       expect(state0).to.equal("Inactive");
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Active");
 
-      await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
-      const state2 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).grantorRemoveSelf();
+      const state2 = await checkIn.returnTrustState();
       expect(state2).to.equal("Inactive");
 
-      await simpleT.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
-      const state3 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
+      const state3 = await checkIn.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
 
@@ -226,127 +324,185 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
      * the grantor. Uses a different order of removal than above.
      * */
     it("grantorRemoveSelf: State changed 2", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getGrantorsLength();
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+
+      const N0 = await grantor.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnTrustState();
+      const state0 = await checkIn.returnTrustState();
       expect(state0).to.equal("Inactive");
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Active");
 
-      await simpleT.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
-      const N1 = await simpleT.getGrantorsLength();
+      await grantor.connect(wallets["InitialTrustee"]).grantorRemoveSelf();
+      const N1 = await grantor.getGrantorsLength();
       expect(N0.sub(1)).to.equal(N1);
-      const state2 = await simpleT.returnTrustState();
+      const state2 = await checkIn.returnTrustState();
       expect(state2).to.equal("Active");
 
-      await simpleT.connect(wallets["Grantor2"]).grantorRemoveSelf();
-      const N2 = await simpleT.getGrantorsLength();
+      await grantor.connect(wallets["Grantor2"]).grantorRemoveSelf();
+      const N2 = await grantor.getGrantorsLength();
       expect(N2).to.equal(0);
-      const state3 = await simpleT.returnTrustState();
+      const state3 = await checkIn.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
 
     it("adminRemoveGrantor: Correct Length", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getGrantorsLength();
-      await simpleT
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
+      // Get current grantor length
+      const N0 = await grantor.getGrantorsLength();
+
+      // Remove the Grantor
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["Grantor2"].address);
-      const N1 = await simpleT.getGrantorsLength();
+
+      // Length of Grantors should be 1 less
+      const N1 = await grantor.getGrantorsLength();
       expect(N0.sub(1)).to.equal(N1);
 
-      await simpleT
+      // Remove another Grantor
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["InitialTrustee"].address);
-      const N2 = await simpleT.getGrantorsLength();
+      // Length of Grantors should be 1 less
+      const N2 = await grantor.getGrantorsLength();
       expect(N1.sub(1)).to.equal(N2);
     });
 
     it("adminRemoveGrantor: Correct Addresses removed", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
+      //  Grantor to remove
       const removeAddress = wallets["Grantor2"].address;
 
-      const isGrantorResult1 = await simpleT.findIsAGrantor(removeAddress);
+      // Grantor be a grantor
+      const isGrantorResult1 = await grantor.findIsAGrantor(removeAddress);
       expect(isGrantorResult1).to.be.true;
 
-      await simpleT
+      // Removed grantor should no longer be a grantor
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(removeAddress);
-      const isGrantorResult2 = await simpleT.findIsAGrantor(removeAddress);
+      const isGrantorResult2 = await grantor.findIsAGrantor(removeAddress);
       expect(isGrantorResult2).to.be.false;
 
+      // Repeat for a second Grantor
       const removeAddress2 = wallets["InitialTrustee"].address;
-      const isGrantorResult3 = await simpleT.findIsAGrantor(removeAddress2);
+      const isGrantorResult3 = await grantor.findIsAGrantor(removeAddress2);
       expect(isGrantorResult3).to.be.true;
-      await simpleT
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(removeAddress2);
-      const isGrantorResult4 = await simpleT.findIsAGrantor(removeAddress2);
+      const isGrantorResult4 = await grantor.findIsAGrantor(removeAddress2);
       expect(isGrantorResult4).to.be.false;
     });
 
     it("adminRemoveGrantor: Role removed", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+
+      // Grantor should be a Grantor
       const removeAddress = wallets["Grantor2"].address;
-      const hasRoleResult1 = await simpleT.hasRole(GRANTOR_ROLE, removeAddress);
+      const hasRoleResult1 = await access.hasRole(GRANTOR_ROLE, removeAddress);
       expect(hasRoleResult1).to.be.true;
 
-      await simpleT
+      // Grantor should no longer be a grantor
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(removeAddress);
-      const hasRoleResult2 = await simpleT.hasRole(GRANTOR_ROLE, removeAddress);
+      const hasRoleResult2 = await access.hasRole(GRANTOR_ROLE, removeAddress);
       expect(hasRoleResult2).to.be.false;
 
+      // Second grantor should be a grantor
       const removeAddress2 = wallets["InitialTrustee"].address;
-      const hasRoleResult3 = await simpleT.hasRole(
-        GRANTOR_ROLE,
-        removeAddress2
-      );
+      const hasRoleResult3 = await access.hasRole(GRANTOR_ROLE, removeAddress2);
       expect(hasRoleResult3).to.be.true;
 
-      await simpleT
+      //  Second grantor should no longer be a grantor
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(removeAddress2);
-      const hasRoleResult4 = await simpleT.hasRole(
-        GRANTOR_ROLE,
-        removeAddress2
-      );
+      const hasRoleResult4 = await access.hasRole(GRANTOR_ROLE, removeAddress2);
       expect(hasRoleResult4).to.be.false;
     });
 
     it("adminRemoveGrantor: Tokens Burned", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const ERC1155 = await ethers.getContractFactory("ERC1155");
+      const erc1155 = await ERC1155.attach(routerAddress);
+
+      // Tokens per Grantor constant
+      const tokensPerGrantor = await grantor.getTokensPerGrantor();
+
+      // Grantor address to remove
       const removeAddress = wallets["Grantor2"].address;
-      const tokensPerGrantor = await simpleT.TOKENS_PER_GRANTOR();
-      const tokenID = await simpleT.getGrantorsTokenID(removeAddress);
-      const tokenBal1 = await simpleT.balanceOf(removeAddress, tokenID);
-      expect(tokenBal1).to.equal(tokensPerGrantor);
 
-      await simpleT
+      // Get Grantor's token ID and balance
+      const tokenID = await grantor.getGrantorsTokenID(removeAddress);
+      const tokenBal_1 = await erc1155.balanceOf(removeAddress, tokenID);
+      expect(tokenBal_1).to.equal(tokensPerGrantor);
+
+      // Remove the grantor
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(removeAddress);
-      const tokenBal2 = await simpleT.balanceOf(removeAddress, tokenID);
+
+      // Tokens should be burned
+      const tokenBal2 = await erc1155.balanceOf(removeAddress, tokenID);
       expect(tokenBal2).to.equal(0);
     });
 
     it("adminRemoveGrantor: Event Emitted", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
+      // Addresses involved in the event
       const initialTrustee = wallets["InitialTrustee"].address;
       const removeAddress = wallets["Grantor2"].address;
 
+      // Check the event
       await expect(
-        simpleT
+        grantor
           .connect(wallets["InitialTrustee"])
           .adminRemoveGrantor(removeAddress)
       )
-        .to.emit(simpleT, "RemovedGrantor")
+        .to.emit(grantor, "RemovedGrantor")
         .withArgs(initialTrustee, removeAddress);
     });
 
@@ -355,28 +511,35 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
      * the grantor.
      * */
     it("adminRemoveGrantor: State changed 1", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getGrantorsLength();
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+
+      const N0 = await grantor.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnTrustState();
+      const state0 = await checkIn.returnTrustState();
       expect(state0).to.equal("Inactive");
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Active");
 
-      await simpleT
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["Grantor2"].address);
-      const state2 = await simpleT.returnTrustState();
+      const state2 = await checkIn.returnTrustState();
       expect(state2).to.equal("Inactive");
 
-      await simpleT
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["InitialTrustee"].address);
-      const state3 = await simpleT.returnTrustState();
+      const state3 = await checkIn.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
 
@@ -385,82 +548,133 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
      * the grantor. Uses a different order of removal than above.
      * */
     it("adminRemoveGrantor: State changed 2", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getGrantorsLength();
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+
+      const N0 = await grantor.getGrantorsLength();
       expect(N0).to.equal(2);
 
-      const state0 = await simpleT.returnTrustState();
+      const state0 = await checkIn.returnTrustState();
       expect(state0).to.equal("Inactive");
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Active");
 
-      await simpleT
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["InitialTrustee"].address);
-      const state2 = await simpleT.returnTrustState();
+      const state2 = await checkIn.returnTrustState();
       expect(state2).to.equal("Active");
 
-      await simpleT
+      await grantor
         .connect(wallets["InitialTrustee"])
         .adminRemoveGrantor(wallets["Grantor2"].address);
-      const state3 = await simpleT.returnTrustState();
+      const state3 = await checkIn.returnTrustState();
       expect(state3).to.equal("Inactive");
     });
   });
 
-  // describe("Assign Assets", () => {
-  //   it("assignAssetsToTrust: tokens transfered", async () => {
-  //     const { wallets, simpleT } = await deployFixture();
-  //     const Grantor2 = wallets["Grantor2"].address;
-  //     const tokensPerGrantor = await simpleT.TOKENS_PER_GRANTOR();
+  describe("Assign Assets", () => {
+    it("assignAssetsToTrust: tokens transfered", async () => {
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-  //     const tokenID = await simpleT.getGrantorsTokenID(Grantor2);
-  //     const tokenBal0 = await simpleT.balanceOf(Grantor2, tokenID);
-  //     expect(tokenBal0).to.equal(tokensPerGrantor);
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const ERC1155 = await ethers.getContractFactory("ERC1155");
+      const erc1155 = await ERC1155.attach(routerAddress);
 
-  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-  //     const tokenBal1 = await simpleT.balanceOf(Grantor2, tokenID);
-  //     expect(tokenBal1).to.equal(0);
-  //   });
+      // Tokens per Grantor constant
+      const tokensPerGrantor = await grantor.getTokensPerGrantor();
 
-  //   it("assignAssetsToTrust: state changed", async () => {
-  //     const { wallets, simpleT } = await deployFixture();
+      // Grantor address to remove
+      const grantorAddress = wallets["Grantor2"].address;
 
-  //     const state0 = await simpleT.returnTrustState();
-  //     expect(state0).to.equal("Inactive");
-  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-  //     const state1 = await simpleT.returnTrustState();
-  //     expect(state1).to.equal("Active");
-  //   });
+      // Get Grantor's token ID and balance
+      const tokenID = await grantor.getGrantorsTokenID(grantorAddress);
+      const grantoBal_0 = await erc1155.balanceOf(grantorAddress, tokenID);
+      expect(grantoBal_0).to.equal(tokensPerGrantor);
 
-  //   it("assignAssetsToTrust: Event Emitted", async () => {
-  //     const { wallets, simpleT } = await deployFixture();
+      // Trust's balance should be 0
+      const trustBal_0 = await erc1155.balanceOf(routerAddress, tokenID);
+      expect(trustBal_0).to.equal(0);
 
-  //     const state0 = await simpleT.returnTrustState();
+      // Assign the Assets to the Trust
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
-  //     const initialTrustee = wallets["InitialTrustee"].address;
-  //     await expect(
-  //       simpleT.connect(wallets["InitialTrustee"]).assignAssetsToTrust()
-  //     )
-  //       .to.emit(simpleT, "AssetsAssigned")
-  //       .withArgs(initialTrustee);
-  //   });
-  // });
+      // Grantor's tokens should be 0
+      const grantoBal_1 = await erc1155.balanceOf(grantorAddress, tokenID);
+      expect(grantoBal_1).to.equal(0);
 
-  // it("Set Distribution", async () => {
-  //   const { wallets, simpleT } = await deployFixture();
+      // Trust's balance should be tokens per grantor
+      const trustBal_1 = await erc1155.balanceOf(routerAddress, tokenID);
+      expect(trustBal_1).to.equal(tokensPerGrantor);
+    });
 
-  //   expect(await simpleT.returnDistributionType()).to.equal("perStirpes");
+    it("assignAssetsToTrust: state changed", async () => {
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-  //   const newDist = "proRata";
-  //   await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist);
-  //   expect(await simpleT.returnDistributionType()).to.equal(newDist);
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
 
-  //   const newDist2 = "perStirpes";
-  //   await simpleT.connect(wallets["InitialTrustee"]).setDistribution(newDist2);
-  //   expect(await simpleT.returnDistributionType()).to.equal(newDist2);
-  // });
+      const state0 = await checkIn.returnTrustState();
+      expect(state0).to.equal("Inactive");
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const state1 = await checkIn.returnTrustState();
+      expect(state1).to.equal("Active");
+    });
+
+    it("assignAssetsToTrust: Event Emitted", async () => {
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
+      // Wallet in the event
+      const initialTrustee = wallets["InitialTrustee"].address;
+
+      // Check emitted event
+      await expect(
+        grantor.connect(wallets["InitialTrustee"]).assignAssetsToTrust()
+      )
+        .to.emit(grantor, "AssetsAssigned")
+        .withArgs(initialTrustee);
+    });
+  });
+  describe("Set Distribution", () => {
+    it("Should Set Distribution", async () => {
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+
+      expect(await grantor.returnDistributionType()).to.equal("perStirpes");
+
+      const newDist = "proRata";
+      await grantor.connect(wallets["InitialTrustee"]).setDistribution(newDist);
+      expect(await grantor.returnDistributionType()).to.equal(newDist);
+
+      const newDist2 = "perStirpes";
+      await grantor
+        .connect(wallets["InitialTrustee"])
+        .setDistribution(newDist2);
+      expect(await grantor.returnDistributionType()).to.equal(newDist2);
+    });
+  });
 });

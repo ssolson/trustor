@@ -1,6 +1,9 @@
 const { use, expect } = require("chai");
 const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
+const {
+  time,
+  loadFixture,
+} = require("@nomicfoundation/hardhat-network-helpers");
 
 const DEFAULT_ADMIN_ROLE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -24,11 +27,12 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
     const InitialTrusteeAddress = InitialTrustee.address;
     const CheckInPeriod = 2;
     const Grantors = [InitialTrustee.address, Grantor2.address];
+    const Distribution = "perStirpes";
     const SuccessorTrustees = [
       SuccessorTrustee1.address,
       SuccessorTrustee2.address,
     ];
-    const SuccessorTrusteePositions = [0, 1];
+    const SuccessorTrusteePositions = [1, 2];
     const SuccessorTrusteePeriod = 2;
     const Beneficiary = [Beneficiary1.address, Beneficiary2.address];
     const Shares = [75, 25];
@@ -38,6 +42,7 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       InitialTrusteeAddress,
       CheckInPeriod,
       Grantors,
+      Distribution,
       SuccessorTrustees,
       SuccessorTrusteePositions,
       SuccessorTrusteePeriod,
@@ -45,8 +50,15 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       Shares,
     ];
 
-    const SimpleT = await ethers.getContractFactory("SimpleT");
-    const simpleT = await SimpleT.deploy(...argz);
+    const LoadedStaticRouter = await ethers.getContractFactory("Router");
+    const router = await LoadedStaticRouter.connect(InitialTrustee).deploy();
+    await router.deployed();
+
+    const routerAddress = router.address;
+
+    const Initialize = await ethers.getContractFactory("Initialize");
+    const initialize = await Initialize.attach(routerAddress);
+    await initialize.initializeInitializableModule(...argz);
 
     const wallets = {
       InitialTrustee: InitialTrustee,
@@ -57,76 +69,110 @@ describe("🚩 🏵 Simple Trust 🤖", async function () {
       Beneficiary2: Beneficiary2,
     };
 
-    return { wallets, simpleT };
+    return { wallets, routerAddress };
   }
 
   describe("CheckIn Period", () => {
     it("CheckIn Period: Initialized Correct Length", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const N0InSeconds = await simpleT.checkInPeriod();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const ERC1155 = await ethers.getContractFactory("ERC1155");
+      const erc1155 = await ERC1155.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Get the set period 
+      const N0InSeconds = await checkIn.getCheckInPeriod();
+
+      // Should be equal to SuccessorTrusteePeriod set in fixture
       const secondsInADay = 3600 * 24;
       const N0InDays = N0InSeconds / secondsInADay;
-
       expect(N0InDays).to.equal(2);
     });
 
     it("setCheckInPeriod: Correct Length", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
+      // Attach ABI
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      
+      // Set new period 
       const period = 365;
+      await checkIn.connect(wallets["InitialTrustee"]).setCheckInPeriod(period);
+
+      // Get the current Checkin Period 
+      const N0InSeconds = await checkIn.getCheckInPeriod();
+
+      // Returned period should be equal to set period
       const secondsInADay = 3600 * 24;
-
-      await simpleT.connect(wallets["InitialTrustee"]).setCheckInPeriod(period);
-      const N0InSeconds = await simpleT.checkInPeriod();
-
       const N0InDays = N0InSeconds / secondsInADay;
-
       expect(N0InDays).to.equal(period);
     });
 
     it("setCheckInPeriod: Event Emitted", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
+      // Attach ABI
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+
+      // Check set new period event
       const period = 365;
-      const secondsInADay = 3600 * 24;
-      const initialTrustee = wallets["InitialTrustee"].address;
-
-      await simpleT.setCheckInPeriod(period);
-
       await expect(
-        simpleT.connect(wallets["InitialTrustee"]).setCheckInPeriod(period)
+        checkIn.connect(wallets["InitialTrustee"]).setCheckInPeriod(period)
       )
-        .to.emit(simpleT, "PeriodSet")
-        .withArgs(initialTrustee, period);
+        .to.emit(checkIn, "PeriodSet")
+        .withArgs(wallets["InitialTrustee"].address, period);
     });
   });
 
   describe("Check In", () => {
     it("checkInNow: Update ", async () => {
-      const { wallets, simpleT } = await deployFixture();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const t0 = await time.latest();
-      console.log("t0", t0);
+      // Attach ABI
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
 
-      await simpleT.checkInNow();
+      // Checkin then request the last checkin time
+      await checkIn.checkInNow();
+      const lastCheckInTime = await checkIn.getLastCheckInTime();
 
-      const lastCheckInTime = await simpleT.lastCheckInTime();
-
+      // Last checkin time should be equal to now/latest
       const t1 = await time.latest();
-      console.log("t1", t1);
-      console.log("lastCheckInTime", lastCheckInTime);
       expect(t1).to.equal(lastCheckInTime);
     });
   });
 
   describe("Expiration", () => {
     it("Expiration: Correct time", async () => {
-      const { wallets, simpleT } = await deployFixture();
-      const N0InSeconds = await simpleT.checkInPeriod();
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const lastCheckInTime = await simpleT.lastCheckInTime();
-      const expirationTime = await simpleT.getExpirationTime();
+      // Attach ABI
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
 
+      // Get Period
+      const N0InSeconds = await checkIn.getCheckInPeriod();
+
+      //  Time 0
+      const lastCheckInTime = await checkIn.getLastCheckInTime();
+
+      // Time Final
+      const expirationTime = await checkIn.getExpirationTime();
+
+      // Time Final = Time0 + Period
       expect(expirationTime).to.equal(lastCheckInTime.add(N0InSeconds));
     });
   });

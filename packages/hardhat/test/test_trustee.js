@@ -1,22 +1,19 @@
 const { use, expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
-  loadFixture,
   time,
+  loadFixture,
 } = require("@nomicfoundation/hardhat-network-helpers");
-const {
-  Contract,
-} = require("hardhat/internal/hardhat-network/stack-traces/model");
 
 const DEFAULT_ADMIN_ROLE =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 const GRANTOR_ROLE = ethers.utils.id("GRANTOR_ROLE");
 const INITIAL_TRUSTEE_ROLE = ethers.utils.id("INITIAL_TRUSTEE_ROLE");
+const ACTIVE_TRUSTEE_ROLE = ethers.utils.id("ACTIVE_TRUSTEE_ROLE");
 const SUCCESSOR_TRUSTEE_ROLE = ethers.utils.id("SUCCESSOR_TRUSTEE_ROLE");
 const BENEFICIARY_ROLE = ethers.utils.id("BENEFICIARY_ROLE");
-const ACTIVE_TRUSTEE_ROLE = ethers.utils.id("ACTIVE_TRUSTEE_ROLE");
 
-describe("🚩 🏵 Simple Trust 🤖", function () {
+describe("🚩 🏵 Simple Trust 🤖", async function () {
   async function deployFixture() {
     const [
       InitialTrustee,
@@ -31,7 +28,7 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
     const InitialTrusteeAddress = InitialTrustee.address;
     const CheckInPeriod = 2;
     const Grantors = [InitialTrustee.address, Grantor2.address];
-    const Distribution = "proRata";
+    const Distribution = "perStirpes";
     const SuccessorTrustees = [
       SuccessorTrustee1.address,
       SuccessorTrustee2.address,
@@ -54,8 +51,15 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
       Shares,
     ];
 
-    const SimpleT = await ethers.getContractFactory("SimpleT");
-    const simpleT = await SimpleT.deploy(...argz);
+    const LoadedStaticRouter = await ethers.getContractFactory("Router");
+    const router = await LoadedStaticRouter.connect(InitialTrustee).deploy();
+    await router.deployed();
+
+    const routerAddress = router.address;
+
+    const Initialize = await ethers.getContractFactory("Initialize");
+    const initialize = await Initialize.attach(routerAddress);
+    await initialize.initializeInitializableModule(...argz);
 
     const wallets = {
       InitialTrustee: InitialTrustee,
@@ -66,55 +70,115 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
       Beneficiary2: Beneficiary2,
     };
 
-    return { wallets, simpleT };
+    return { wallets, routerAddress };
   }
 
   describe("Adding Trustee", async () => {
     it("addSuccessorTrustee: Correct Length", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
-      const N0 = await simpleT.getSuccessorTrusteeLength();
-      initialTrustee = wallets["InitialTrustee"];
-      await simpleT
-        .connect(initialTrustee)
-        .addSuccessorTrustee(wallets["Beneficiary1"].address, 1);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N1 = await simpleT.getSuccessorTrusteeLength();
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const ERC1155 = await ethers.getContractFactory("ERC1155");
+      const erc1155 = await ERC1155.attach(routerAddress);
+
+      // Get the starting number of succesor trustees
+      const N0 = await trustee.getSuccessorTrusteeLength();
+
+      // Add a trustee
+      await trustee
+        .connect(wallets["InitialTrustee"])
+        .addSuccessorTrustees([wallets["Beneficiary1"].address], [1]);
+
+      // The number of trustees should go up
+      const N1 = await trustee.getSuccessorTrusteeLength();
       expect(N0.add(1)).to.equal(N1);
     });
 
     it("addSuccessorTrustee: Correct Address added", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Set new succesor and position
       const newAddress = wallets["Beneficiary1"].address;
       const newPosition = 3;
-      await simpleT
+
+      // Should not be a trustee
+      const isSuccessorTrusteeResult_0 = await trustee.findIsATrustee(
+        newAddress
+      );
+      expect(isSuccessorTrusteeResult_0).to.be.false;
+
+      // Add the succsor trustee
+      await trustee
         .connect(wallets["InitialTrustee"])
-        .addSuccessorTrustee(newAddress, newPosition);
-      const isSuccessorTrusteeResult = await simpleT.findIsATrustee(newAddress);
-      expect(isSuccessorTrusteeResult).to.be.true;
+        .addSuccessorTrustees([newAddress], [newPosition]);
+
+      // Should now be a trustee
+      const isSuccessorTrusteeResult_1 = await trustee.findIsATrustee(
+        newAddress
+      );
+      expect(isSuccessorTrusteeResult_1).to.be.true;
     });
 
     it("addSuccessorTrustee: Correct Position added", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Set new succesor and position
       const newAddress = wallets["Beneficiary1"].address;
       const newPosition = 3;
-      await simpleT
-        .connect(wallets["InitialTrustee"])
-        .addSuccessorTrustee(newAddress, newPosition);
-      const successorTrusteePosition = await simpleT.successorTrusteePosition(
+
+      // Should not be a trustee
+      const isSuccessorTrusteeResult_0 = await trustee.findIsATrustee(
         newAddress
       );
+      expect(isSuccessorTrusteeResult_0).to.be.false;
+
+      // Add the succesor trustee
+      await trustee
+        .connect(wallets["InitialTrustee"])
+        .addSuccessorTrustees([newAddress], [newPosition]);
+
+      // The returned position should be equal to the set postion
+      const successorTrusteePosition =
+        await trustee.getSuccessorTrusteePosition(newAddress);
       expect(successorTrusteePosition).to.equal(newPosition);
     });
 
     it("addSuccessorTrustee: Role added", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+
+      // Set new succesor and position
       const newAddress = wallets["Beneficiary1"].address;
       const newPosition = 3;
-      await simpleT
+
+      // Add the succesor trustee
+      await trustee
         .connect(wallets["InitialTrustee"])
-        .addSuccessorTrustee(newAddress, newPosition);
-      const hasRoleResult1 = await simpleT.hasRole(
+        .addSuccessorTrustees([newAddress], [newPosition]);
+
+      // Role should be granted
+      const hasRoleResult1 = await access.hasRole(
         SUCCESSOR_TRUSTEE_ROLE,
         newAddress
       );
@@ -122,145 +186,220 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
     });
 
     it("addSuccessorTrustee: Event Emitted", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Set new succesor and position
       const newAddress = wallets["Beneficiary1"].address;
       const newPosition = 3;
 
+      // Check the emitted event
       await expect(
-        simpleT
+        trustee
           .connect(wallets["InitialTrustee"])
-          .addSuccessorTrustee(newAddress, newPosition)
+          .addSuccessorTrustees([newAddress], [newPosition])
       )
-        .to.emit(simpleT, "AddedSccessorTrustee")
+        .to.emit(trustee, "AddedSccessorTrustee")
         .withArgs(wallets["InitialTrustee"].address, newAddress, newPosition);
     });
   });
 
   describe("Adding Trustees", () => {
     it("addSuccessorTrustees: Correct Length", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Succesor trustees to add
       const newAddress1 = wallets["Beneficiary1"].address;
       const newAddress2 = wallets["Beneficiary2"].address;
       const newPosition1 = 4;
       const newPosition2 = 5;
 
-      const N0 = await simpleT.getSuccessorTrusteeLength();
-      await simpleT
+      // Get the initial length
+      const N0 = await trustee.getSuccessorTrusteeLength();
+
+      //  Add the trustees
+      await trustee
         .connect(wallets["InitialTrustee"])
         .addSuccessorTrustees(
           [newAddress1, newAddress2],
           [newPosition1, newPosition2]
         );
-      const N1 = await simpleT.getSuccessorTrusteeLength();
+
+      // Length should have increaced by 2
+      const N1 = await trustee.getSuccessorTrusteeLength();
       expect(N0.add(2)).to.equal(N1);
     });
 
     it("addSuccessorTrustees: Correct Addresses added", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Succesor trustees to add
       const newAddress1 = wallets["Beneficiary1"].address;
       const newAddress2 = wallets["Beneficiary2"].address;
       const newPosition1 = 4;
       const newPosition2 = 5;
 
-      await simpleT
+      // Should not be Trustees
+      const isTrusteeResult1_0 = await trustee.findIsATrustee(newAddress1);
+      expect(isTrusteeResult1_0).to.be.false;
+      const isTrusteeResult2_0 = await trustee.findIsATrustee(newAddress2);
+      expect(isTrusteeResult2_0).to.be.false;
+
+      //  Add the trustees
+      await trustee
         .connect(wallets["InitialTrustee"])
         .addSuccessorTrustees(
           [newAddress1, newAddress2],
           [newPosition1, newPosition2]
         );
 
-      const isTrusteeResult1 = await simpleT.findIsATrustee(newAddress1);
-      expect(isTrusteeResult1).to.be.true;
-      const isTrusteeResult2 = await simpleT.findIsATrustee(newAddress2);
-      expect(isTrusteeResult2).to.be.true;
+      const isTrusteeResult1_1 = await trustee.findIsATrustee(newAddress1);
+      expect(isTrusteeResult1_1).to.be.true;
+      const isTrusteeResult2_1 = await trustee.findIsATrustee(newAddress2);
+      expect(isTrusteeResult2_1).to.be.true;
     });
 
     it("addSuccessorTrustees: Role added", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+
+      // Succesor trustees to add
       const newAddress1 = wallets["Beneficiary1"].address;
       const newAddress2 = wallets["Beneficiary2"].address;
       const newPosition1 = 4;
       const newPosition2 = 5;
-      const hasRoleResult01 = await simpleT.hasRole(
+
+      // Should not have role
+      const hasRoleResult1_0 = await access.hasRole(
         SUCCESSOR_TRUSTEE_ROLE,
         newAddress1
       );
-      const hasRoleResult02 = await simpleT.hasRole(
+      const hasRoleResult2_0 = await access.hasRole(
         SUCCESSOR_TRUSTEE_ROLE,
         newAddress2
       );
-      expect(hasRoleResult01).to.be.false;
-      expect(hasRoleResult02).to.be.false;
+      expect(hasRoleResult1_0).to.be.false;
+      expect(hasRoleResult2_0).to.be.false;
 
-      await simpleT
+      // Add the Trustees
+      await trustee
         .connect(wallets["InitialTrustee"])
         .addSuccessorTrustees(
           [newAddress1, newAddress2],
           [newPosition1, newPosition2]
         );
 
-      const hasRoleResult11 = await simpleT.hasRole(
+      // Should have trustee role now
+      const hasRoleResult1_1 = await access.hasRole(
         SUCCESSOR_TRUSTEE_ROLE,
         newAddress1
       );
-      const hasRoleResult12 = await simpleT.hasRole(
+      const hasRoleResult2_1 = await access.hasRole(
         SUCCESSOR_TRUSTEE_ROLE,
         newAddress2
       );
-      expect(hasRoleResult11).to.be.true;
-      expect(hasRoleResult12).to.be.true;
+      expect(hasRoleResult1_1).to.be.true;
+      expect(hasRoleResult2_1).to.be.true;
     });
   });
 
   describe("Removing Trustee", () => {
     it("adminRemoveTrustee: Correct Length", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getSuccessorTrusteeLength();
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
 
-      await simpleT
+      // Get the current number of Trustees
+      const N0 = await trustee.getSuccessorTrusteeLength();
+
+      // Remove the trustee
+      await trustee
         .connect(wallets["InitialTrustee"])
-        .adminRemoveSuccessorTrustee(wallets["SuccessorTrustee1"].address);
+        .initialTrusteeRemoveSuccessorTrustee(
+          wallets["SuccessorTrustee1"].address
+        );
 
-      const N1 = await simpleT.getSuccessorTrusteeLength();
+      // Number should decrease by 1
+      const N1 = await trustee.getSuccessorTrusteeLength();
       expect(N0.sub(1)).to.equal(N1);
     });
 
     it("adminRemoveTrustee: Correct Addresses removed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Wallet to Remove
       const removeAddress = wallets["SuccessorTrustee2"].address;
 
-      const isSuccessorTrusteeResult1 = await simpleT.findIsATrustee(
+      //  Should be a trustee
+      const isSuccessorTrusteeResult1 = await trustee.findIsATrustee(
         removeAddress
       );
       expect(isSuccessorTrusteeResult1).to.be.true;
 
-      await simpleT
+      // Remove the trustee
+      await trustee
         .connect(wallets["InitialTrustee"])
-        .adminRemoveSuccessorTrustee(removeAddress);
+        .initialTrusteeRemoveSuccessorTrustee(removeAddress);
 
-      const isSuccessorTrusteeResult2 = await simpleT.findIsATrustee(
+      //  Should no longer be a trustee
+      const isSuccessorTrusteeResult2 = await trustee.findIsATrustee(
         removeAddress
       );
       expect(isSuccessorTrusteeResult2).to.be.false;
     });
 
     it("adminRemoveTrustee: Role removed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
+
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+
+      // Wallet to Remove
       const removeAddress = wallets["SuccessorTrustee2"].address;
 
-      const hasRoleResult1 = await simpleT.hasRole(
+      const hasRoleResult1 = await access.hasRole(
         SUCCESSOR_TRUSTEE_ROLE,
         removeAddress
       );
       expect(hasRoleResult1).to.be.true;
 
-      await simpleT
+      await trustee
         .connect(wallets["InitialTrustee"])
-        .adminRemoveSuccessorTrustee(removeAddress);
+        .initialTrusteeRemoveSuccessorTrustee(removeAddress);
 
-      const hasRoleResult2 = await simpleT.hasRole(
+      const hasRoleResult2 = await access.hasRole(
         SUCCESSOR_TRUSTEE_ROLE,
         removeAddress
       );
@@ -268,76 +407,104 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
     });
 
     it("adminRemoveTrustee: Event Emitted", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Wallet sending request
       const initialTrustee = wallets["InitialTrustee"].address;
-      const removeAddress = wallets["SuccessorTrustee2"].address;
 
-      const position = await simpleT.successorTrusteePosition(removeAddress);
+      // Wallet to Remove, and the Trustee's position
+      const removeAddress = wallets["SuccessorTrustee2"].address;
+      const position = await trustee.getSuccessorTrusteePosition(removeAddress);
 
       await expect(
-        simpleT
+        trustee
           .connect(wallets["InitialTrustee"])
-          .adminRemoveSuccessorTrustee(removeAddress)
+          .initialTrusteeRemoveSuccessorTrustee(removeAddress)
       )
-        .to.emit(simpleT, "RemovedSuccessorTrustee")
+        .to.emit(trustee, "RemovedSuccessorTrustee")
         .withArgs(initialTrustee, removeAddress, position);
     });
 
-    // TODO cannont remove last trustee
     it("adminRemoveTrustee: Cannot Remove Last Trustee", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const N0 = await simpleT.getSuccessorTrusteeLength();
+      // Attach ABI
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
 
-      await simpleT
+      // Remove Trustee
+      await trustee
         .connect(wallets["InitialTrustee"])
-        .adminRemoveSuccessorTrustee(wallets["SuccessorTrustee1"].address);
+        .initialTrusteeRemoveSuccessorTrustee(
+          wallets["SuccessorTrustee1"].address
+        );
 
       await expect(
-        simpleT
+        trustee
           .connect(wallets["InitialTrustee"])
-          .adminRemoveSuccessorTrustee(wallets["SuccessorTrustee2"].address)
+          .initialTrusteeRemoveSuccessorTrustee(
+            wallets["SuccessorTrustee2"].address
+          )
       ).to.be.revertedWith(
         "Cannot remove last successor trustee. Please add replacement before removal."
       );
     });
   });
 
-  // TODO: Check if inactive grantors removed at execution
+  // // TODO: Check if inactive grantors removed at execution
   describe("Initiate Truste Execution", () => {
     /** This test will test reversion of the first Succesor Trustee
      * prior to expiration. Expects Succesor Trustee 1 to be in
      * first window.
      * */
     it("initiateTrustExecution: CheckIn Time Correct Period 1", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const lastCheckin = await simpleT.lastCheckInTime();
-      const checkinPeriod = await simpleT.lastCheckInTime();
-      const expiration = await simpleT.getExpirationTime();
+      // Attach ABI
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      // Get contract checkin time variables
+      const lastCheckin = await checkIn.getLastCheckInTime();
+      const checkinPeriod = await checkIn.getCheckInPeriod();
+      const expiration = await checkIn.getExpirationTime();
       const t0 = await time.latest();
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      // Assign assets to the trust
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
+      // Successor Trustee requests and signs message offline
       const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage = succesorTrustee.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
       await expect(
-        simpleT.connect(succesorTrustee).initiateTrustExecution(signedMessage)
+        trustee.connect(succesorTrustee).initiateTrustExecution(signedMessage)
       ).to.be.revertedWith(
         "This Succesor Trustee is not availble to act on this trust yet."
       );
 
       await time.increaseTo(expiration);
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee)
         .initiateTrustExecution(signedMessage);
-      const state2 = await simpleT.returnTrustState();
+
+      // Check state
+      const state2 = await checkIn.returnTrustState();
       expect(state2).to.equal("Executing");
     });
 
@@ -346,21 +513,30 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
      * not the first window.
      * */
     it("initiateTrustExecution: CheckIn Time Correct Period 2", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const checkinPeriod = await simpleT.successorTrusteePeriod();
-      const expiration = await simpleT.getExpirationTime();
+      // Attach ABI
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const checkinPeriod = await trustee.getSuccessorTrusteePeriod();
+      const expiration = await checkIn.getExpirationTime();
+
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
       const succesorTrustee = wallets["SuccessorTrustee2"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage = succesorTrustee.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
       await expect(
-        simpleT.connect(succesorTrustee).initiateTrustExecution(signedMessage)
+        trustee.connect(succesorTrustee).initiateTrustExecution(signedMessage)
       ).to.be.revertedWith(
         "This Succesor Trustee is not availble to act on this trust yet."
       );
@@ -368,12 +544,12 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
       await time.increaseTo(expiration);
 
       await expect(
-        simpleT.connect(succesorTrustee).initiateTrustExecution(signedMessage)
+        trustee.connect(succesorTrustee).initiateTrustExecution(signedMessage)
       ).to.be.revertedWith(
         "This Succesor Trustee is not availble to act on this trust yet."
       );
 
-      const periods = await simpleT.successorTrusteePosition(
+      const periods = await trustee.getSuccessorTrusteePosition(
         succesorTrustee.address
       );
 
@@ -381,111 +557,144 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
 
       await time.increaseTo(expiration.add(periods.mul(checkinPeriod)));
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee)
         .initiateTrustExecution(signedMessage);
 
-      const state2 = await simpleT.returnTrustState();
+      // Check state
+      const state2 = await checkIn.returnTrustState();
       expect(state2).to.equal("Executing");
     });
 
     it("initiateTrustExecution: Trust State Changed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const state0 = await simpleT.returnTrustState();
+      // Attach ABI
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      const state0 = await checkIn.returnTrustState();
       expect(state0).to.equal("Inactive");
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Active");
 
       const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
 
       const signedMessage = succesorTrustee.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const expiration = await simpleT.getExpirationTime();
+      const expiration = await checkIn.getExpirationTime();
       await time.increaseTo(expiration);
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee)
         .initiateTrustExecution(signedMessage);
-      const state2 = await simpleT.returnTrustState();
+      const state2 = await checkIn.returnTrustState();
 
       expect(state2).to.equal("Executing");
     });
 
     it("initiateTrustExecution: Grantor's Role Removed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const state0 = await simpleT.returnTrustState();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      const state0 = await checkIn.returnTrustState();
       expect(state0).to.equal("Inactive");
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Active");
 
       const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
 
       const signedMessage = succesorTrustee.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const expiration = await simpleT.getExpirationTime();
+      const expiration = await checkIn.getExpirationTime();
       await time.increaseTo(expiration);
 
       const grantor1 = wallets["InitialTrustee"].address;
       const grantor2 = wallets["Grantor2"].address;
-      const hasRoleResult1 = await simpleT.hasRole(GRANTOR_ROLE, grantor1);
-      const hasRoleResult2 = await simpleT.hasRole(GRANTOR_ROLE, grantor2);
+      const hasRoleResult1 = await access.hasRole(GRANTOR_ROLE, grantor1);
+      const hasRoleResult2 = await access.hasRole(GRANTOR_ROLE, grantor2);
       expect(hasRoleResult1).to.be.true;
       expect(hasRoleResult2).to.be.true;
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee)
         .initiateTrustExecution(signedMessage);
 
-      const hasRoleResult3 = await simpleT.hasRole(GRANTOR_ROLE, grantor1);
-      const hasRoleResult4 = await simpleT.hasRole(GRANTOR_ROLE, grantor2);
+      const hasRoleResult3 = await access.hasRole(GRANTOR_ROLE, grantor1);
+      const hasRoleResult4 = await access.hasRole(GRANTOR_ROLE, grantor2);
       expect(hasRoleResult3).to.be.false;
       expect(hasRoleResult4).to.be.false;
     });
 
     it("initiateTrustExecution: Initial Trustee's Role Removed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const state0 = await simpleT.returnTrustState();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      const state0 = await checkIn.returnTrustState();
       expect(state0).to.equal("Inactive");
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
-      const state1 = await simpleT.returnTrustState();
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Active");
 
       const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
 
       const signedMessage = succesorTrustee.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const expiration = await simpleT.getExpirationTime();
+      const expiration = await checkIn.getExpirationTime();
       await time.increaseTo(expiration);
 
       const initialTrustee = wallets["InitialTrustee"].address;
-      const hasRoleResult1 = await simpleT.hasRole(
+      const hasRoleResult1 = await access.hasRole(
         INITIAL_TRUSTEE_ROLE,
         initialTrustee
       );
       expect(hasRoleResult1).to.be.true;
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee)
         .initiateTrustExecution(signedMessage);
 
-      const hasRoleResult3 = await simpleT.hasRole(
+      const hasRoleResult3 = await access.hasRole(
         INITIAL_TRUSTEE_ROLE,
         initialTrustee
       );
@@ -493,30 +702,41 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
     });
 
     it("initiateTrustExecution: Sender Granted Active Trustee Role", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
       const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage = succesorTrustee.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const expiration = await simpleT.getExpirationTime();
+      const expiration = await checkIn.getExpirationTime();
       await time.increaseTo(expiration);
 
-      const hasRoleResult1 = await simpleT.hasRole(
+      const hasRoleResult1 = await access.hasRole(
         ACTIVE_TRUSTEE_ROLE,
         succesorTrustee.address
       );
       expect(hasRoleResult1).to.be.false;
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee)
         .initiateTrustExecution(signedMessage);
 
-      const hasRoleResult3 = await simpleT.hasRole(
+      const hasRoleResult3 = await access.hasRole(
         ACTIVE_TRUSTEE_ROLE,
         succesorTrustee.address
       );
@@ -524,37 +744,48 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
     });
 
     it("initiateTrustExecution: Only 1 Active Trustee", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      const checkinPeriod = await simpleT.successorTrusteePeriod();
-      const expiration = await simpleT.getExpirationTime();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      //
+      const checkinPeriod = await trustee.getSuccessorTrusteePeriod();
+      const expiration = await checkIn.getExpirationTime();
+
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
       const succesorTrustee1 = wallets["SuccessorTrustee1"];
-      const isDedHash1 = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage1 = succesorTrustee1.signMessage(
-        ethers.utils.arrayify(isDedHash1)
+        ethers.utils.arrayify(isDedHash)
       );
 
       const succesorTrustee2 = wallets["SuccessorTrustee2"];
-      const isDedHash2 = await simpleT.DED();
       const signedMessage2 = succesorTrustee2.signMessage(
-        ethers.utils.arrayify(isDedHash2)
+        ethers.utils.arrayify(isDedHash)
       );
 
-      const periods = await simpleT.successorTrusteePosition(
+      const periods = await trustee.getSuccessorTrusteePosition(
         succesorTrustee2.address
       );
 
       await time.increaseTo(expiration.add(periods.mul(checkinPeriod)));
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee2)
         .initiateTrustExecution(signedMessage2);
 
       await expect(
-        simpleT.connect(succesorTrustee1).initiateTrustExecution(signedMessage1)
+        trustee.connect(succesorTrustee1).initiateTrustExecution(signedMessage1)
       ).to.be.revertedWith("Trust is not in the expected TrustState");
     });
   });
@@ -563,60 +794,82 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
     /** Test the removal of the active Trustee
      * */
     it("removeActiveTrustee: Cannot Remove prior to inaction", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
       const succesorTrustee1 = wallets["SuccessorTrustee1"];
       const succesorTrustee2 = wallets["SuccessorTrustee2"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage = succesorTrustee1.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const grantorExpiration = await simpleT.getExpirationTime();
+      const grantorExpiration = await checkIn.getExpirationTime();
       await time.increaseTo(grantorExpiration);
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee1)
         .initiateTrustExecution(signedMessage);
 
       await expect(
-        simpleT.connect(succesorTrustee2).removeActiveTrustee()
+        trustee.connect(succesorTrustee2).removeActiveTrustee()
       ).to.be.revertedWith("Active trustee has not been inactive long enough.");
     });
 
     it("removeActiveTrustee: ACTIVE_TRUSTEE_ROLE removed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
       const succesorTrustee1 = wallets["SuccessorTrustee1"];
       const succesorTrustee2 = wallets["SuccessorTrustee2"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage = succesorTrustee1.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const grantorExpiration = await simpleT.getExpirationTime();
+      const grantorExpiration = await checkIn.getExpirationTime();
       await time.increaseTo(grantorExpiration);
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee1)
         .initiateTrustExecution(signedMessage);
 
-      const hasRoleResult1 = await simpleT.hasRole(
+      const hasRoleResult1 = await access.hasRole(
         ACTIVE_TRUSTEE_ROLE,
         succesorTrustee1.address
       );
       expect(hasRoleResult1).to.be.true;
 
-      const trusteeExpiration = await simpleT.getActiveTrusteeExpirationTime();
+      const trusteeExpiration = await trustee.getActiveTrusteeExpirationTime();
       await time.increaseTo(trusteeExpiration);
 
-      await simpleT.connect(succesorTrustee2).removeActiveTrustee();
+      await trustee.connect(succesorTrustee2).removeActiveTrustee();
 
-      const hasRoleResult2 = await simpleT.hasRole(
+      const hasRoleResult2 = await access.hasRole(
         ACTIVE_TRUSTEE_ROLE,
         succesorTrustee1.address
       );
@@ -624,285 +877,307 @@ describe("🚩 🏵 Simple Trust 🤖", function () {
     });
 
     it("removeActiveTrustee: activeTrustee is adress(0) ", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
       const succesorTrustee1 = wallets["SuccessorTrustee1"];
       const succesorTrustee2 = wallets["SuccessorTrustee2"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage = succesorTrustee1.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const grantorExpiration = await simpleT.getExpirationTime();
+      const grantorExpiration = await checkIn.getExpirationTime();
       await time.increaseTo(grantorExpiration);
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee1)
         .initiateTrustExecution(signedMessage);
 
-      const activeTrustee1 = await simpleT.activeTrustee();
+      const activeTrustee1 = await trustee.getActiveTrustee();
       expect(activeTrustee1).to.equal(succesorTrustee1.address);
 
-      const trusteeExpiration = await simpleT.getActiveTrusteeExpirationTime();
+      const trusteeExpiration = await trustee.getActiveTrusteeExpirationTime();
       await time.increaseTo(trusteeExpiration);
 
-      await simpleT.connect(succesorTrustee2).removeActiveTrustee();
+      await trustee.connect(succesorTrustee2).removeActiveTrustee();
 
-      const activeTrustee2 = await simpleT.activeTrustee();
+      const activeTrustee2 = await trustee.getActiveTrustee();
       expect(activeTrustee2).to.equal(ethers.constants.AddressZero);
     });
 
     it("removeActiveTrustee: Trust State Returns to Active", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+      // Deploy Contract & Initialize
+      const { wallets, routerAddress } = await loadFixture(deployFixture);
 
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+      // Attach ABI
+      const Access = await ethers.getContractFactory("AccessControl");
+      const access = await Access.attach(routerAddress);
+      const CheckIn = await ethers.getContractFactory("CheckIn");
+      const checkIn = await CheckIn.attach(routerAddress);
+      const Grantor = await ethers.getContractFactory("Grantor");
+      const grantor = await Grantor.attach(routerAddress);
+      const Trustee = await ethers.getContractFactory("Trustee");
+      const trustee = await Trustee.attach(routerAddress);
+
+      await grantor.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
       const succesorTrustee1 = wallets["SuccessorTrustee1"];
       const succesorTrustee2 = wallets["SuccessorTrustee2"];
-      const isDedHash = await simpleT.DED();
+      const isDedHash = await trustee.getDEDHash();
       const signedMessage = succesorTrustee1.signMessage(
         ethers.utils.arrayify(isDedHash)
       );
 
-      const grantorExpiration = await simpleT.getExpirationTime();
+      const grantorExpiration = await checkIn.getExpirationTime();
       await time.increaseTo(grantorExpiration);
 
-      await simpleT
+      await trustee
         .connect(succesorTrustee1)
         .initiateTrustExecution(signedMessage);
 
-      const state1 = await simpleT.returnTrustState();
+      const state1 = await checkIn.returnTrustState();
       expect(state1).to.equal("Executing");
 
-      const trusteeExpiration = await simpleT.getActiveTrusteeExpirationTime();
+      const trusteeExpiration = await trustee.getActiveTrusteeExpirationTime();
       await time.increaseTo(trusteeExpiration);
 
-      await simpleT.connect(succesorTrustee2).removeActiveTrustee();
+      await trustee.connect(succesorTrustee2).removeActiveTrustee();
 
-      const state2 = await simpleT.returnTrustState();
+      const state2 = await checkIn.returnTrustState();
       expect(state2).to.equal("Active");
     });
   });
 
-  describe("Distribute Pro Rata", () => {
-    it("beneficiaryDeceasedProRata: Correct Shares Allocated", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+  // describe("Distribute Pro Rata", () => {
+  //   it("beneficiaryDeceasedProRata: Correct Shares Allocated", async () => {
+  //     const { wallets, simpleT } = await loadFixture(deployFixture);
 
-      // Assign assets
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+  //     // Assign assets
+  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
-      // Checkin Period Expires
-      const expiration = await simpleT.getExpirationTime();
-      await time.increaseTo(expiration);
+  //     // Checkin Period Expires
+  //     const expiration = await simpleT.getExpirationTime();
+  //     await time.increaseTo(expiration);
 
-      // Trustee Signs message to start trust execution
-      const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
-      const signedMessage = succesorTrustee.signMessage(
-        ethers.utils.arrayify(isDedHash)
-      );
+  //     // Trustee Signs message to start trust execution
+  //     const succesorTrustee = wallets["SuccessorTrustee1"];
+  //     const isDedHash = await simpleT.DED();
+  //     const signedMessage = succesorTrustee.signMessage(
+  //       ethers.utils.arrayify(isDedHash)
+  //     );
 
-      await simpleT
-        .connect(succesorTrustee)
-        .initiateTrustExecution(signedMessage);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .initiateTrustExecution(signedMessage);
 
-      const Beneficiary1 = wallets["Beneficiary1"].address;
-      const Beneficiary2 = wallets["Beneficiary2"].address;
+  //     const Beneficiary1 = wallets["Beneficiary1"].address;
+  //     const Beneficiary2 = wallets["Beneficiary2"].address;
 
-      const shares_Beneficiary1_0 = await simpleT.beneficiaryShares(
-        Beneficiary1
-      );
-      const shares_Beneficiary2_0 = await simpleT.beneficiaryShares(
-        Beneficiary2
-      );
-      const totalShares_0 = await simpleT.totalShares();
+  //     const shares_Beneficiary1_0 = await simpleT.beneficiaryShares(
+  //       Beneficiary1
+  //     );
+  //     const shares_Beneficiary2_0 = await simpleT.beneficiaryShares(
+  //       Beneficiary2
+  //     );
+  //     const totalShares_0 = await simpleT.totalShares();
 
-      expect(totalShares_0).is.equal(
-        shares_Beneficiary1_0.add(shares_Beneficiary2_0)
-      );
+  //     expect(totalShares_0).is.equal(
+  //       shares_Beneficiary1_0.add(shares_Beneficiary2_0)
+  //     );
 
-      await simpleT
-        .connect(succesorTrustee)
-        .beneficiaryDeceasedProRata(Beneficiary2);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .beneficiaryDeceasedProRata(Beneficiary2);
 
-      const shares_Beneficiary1_1 = await simpleT.beneficiaryShares(
-        Beneficiary1
-      );
-      const shares_Beneficiary2_1 = await simpleT.beneficiaryShares(
-        Beneficiary2
-      );
-      const totalShares_1 = await simpleT.totalShares();
+  //     const shares_Beneficiary1_1 = await simpleT.beneficiaryShares(
+  //       Beneficiary1
+  //     );
+  //     const shares_Beneficiary2_1 = await simpleT.beneficiaryShares(
+  //       Beneficiary2
+  //     );
+  //     const totalShares_1 = await simpleT.totalShares();
 
-      expect(totalShares_0).is.equal(totalShares_1);
-      expect(shares_Beneficiary1_1).is.equal(totalShares_0);
-      expect(shares_Beneficiary1_1).is.equal(
-        shares_Beneficiary1_0.add(shares_Beneficiary2_0)
-      );
-      expect(shares_Beneficiary2_1).is.equal(0);
-    });
+  //     expect(totalShares_0).is.equal(totalShares_1);
+  //     expect(shares_Beneficiary1_1).is.equal(totalShares_0);
+  //     expect(shares_Beneficiary1_1).is.equal(
+  //       shares_Beneficiary1_0.add(shares_Beneficiary2_0)
+  //     );
+  //     expect(shares_Beneficiary2_1).is.equal(0);
+  //   });
 
-    it("beneficiaryDeceasedProRata: Correct Beneficiary Removed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+  //   it("beneficiaryDeceasedProRata: Correct Beneficiary Removed", async () => {
+  //     const { wallets, simpleT } = await loadFixture(deployFixture);
 
-      // Assign assets
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+  //     // Assign assets
+  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
-      // Checkin Period Expires
-      const expiration = await simpleT.getExpirationTime();
-      await time.increaseTo(expiration);
+  //     // Checkin Period Expires
+  //     const expiration = await simpleT.getExpirationTime();
+  //     await time.increaseTo(expiration);
 
-      // Trustee Signs message to start trust execution
-      const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
-      const signedMessage = succesorTrustee.signMessage(
-        ethers.utils.arrayify(isDedHash)
-      );
+  //     // Trustee Signs message to start trust execution
+  //     const succesorTrustee = wallets["SuccessorTrustee1"];
+  //     const isDedHash = await simpleT.DED();
+  //     const signedMessage = succesorTrustee.signMessage(
+  //       ethers.utils.arrayify(isDedHash)
+  //     );
 
-      await simpleT
-        .connect(succesorTrustee)
-        .initiateTrustExecution(signedMessage);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .initiateTrustExecution(signedMessage);
 
-      const Beneficiary1 = wallets["Beneficiary1"].address;
-      const Beneficiary2 = wallets["Beneficiary2"].address;
+  //     const Beneficiary1 = wallets["Beneficiary1"].address;
+  //     const Beneficiary2 = wallets["Beneficiary2"].address;
 
-      const isInArrayResult1_0 = await simpleT.findIsABeneficiary(Beneficiary1);
-      const isInArrayResult2_0 = await simpleT.findIsABeneficiary(Beneficiary2);
-      expect(isInArrayResult1_0).to.be.true;
-      expect(isInArrayResult2_0).to.be.true;
+  //     const isInArrayResult1_0 = await simpleT.findIsABeneficiary(Beneficiary1);
+  //     const isInArrayResult2_0 = await simpleT.findIsABeneficiary(Beneficiary2);
+  //     expect(isInArrayResult1_0).to.be.true;
+  //     expect(isInArrayResult2_0).to.be.true;
 
-      await simpleT
-        .connect(succesorTrustee)
-        .beneficiaryDeceasedProRata(Beneficiary2);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .beneficiaryDeceasedProRata(Beneficiary2);
 
-      const isInArrayResult1_1 = await simpleT.findIsABeneficiary(Beneficiary1);
-      const isInArrayResult2_1 = await simpleT.findIsABeneficiary(Beneficiary2);
-      expect(isInArrayResult1_1).to.be.true;
-      expect(isInArrayResult2_1).to.be.false;
-    });
+  //     const isInArrayResult1_1 = await simpleT.findIsABeneficiary(Beneficiary1);
+  //     const isInArrayResult2_1 = await simpleT.findIsABeneficiary(Beneficiary2);
+  //     expect(isInArrayResult1_1).to.be.true;
+  //     expect(isInArrayResult2_1).to.be.false;
+  //   });
 
-    it("beneficiaryDeceasedProRata: Role removed", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+  //   it("beneficiaryDeceasedProRata: Role removed", async () => {
+  //     const { wallets, simpleT } = await loadFixture(deployFixture);
 
-      // Assign assets
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+  //     // Assign assets
+  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
-      // Checkin Period Expires
-      const expiration = await simpleT.getExpirationTime();
-      await time.increaseTo(expiration);
+  //     // Checkin Period Expires
+  //     const expiration = await simpleT.getExpirationTime();
+  //     await time.increaseTo(expiration);
 
-      // Trustee Signs message to start trust execution
-      const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
-      const signedMessage = succesorTrustee.signMessage(
-        ethers.utils.arrayify(isDedHash)
-      );
+  //     // Trustee Signs message to start trust execution
+  //     const succesorTrustee = wallets["SuccessorTrustee1"];
+  //     const isDedHash = await simpleT.DED();
+  //     const signedMessage = succesorTrustee.signMessage(
+  //       ethers.utils.arrayify(isDedHash)
+  //     );
 
-      await simpleT
-        .connect(succesorTrustee)
-        .initiateTrustExecution(signedMessage);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .initiateTrustExecution(signedMessage);
 
-      const Beneficiary1 = wallets["Beneficiary1"].address;
-      const Beneficiary2 = wallets["Beneficiary2"].address;
+  //     const Beneficiary1 = wallets["Beneficiary1"].address;
+  //     const Beneficiary2 = wallets["Beneficiary2"].address;
 
-      const hasRoleResult1_0 = await simpleT.hasRole(
-        BENEFICIARY_ROLE,
-        Beneficiary1
-      );
-      const hasRoleResult2_0 = await simpleT.hasRole(
-        BENEFICIARY_ROLE,
-        Beneficiary2
-      );
-      expect(hasRoleResult1_0).to.be.true;
-      expect(hasRoleResult2_0).to.be.true;
+  //     const hasRoleResult1_0 = await simpleT.hasRole(
+  //       BENEFICIARY_ROLE,
+  //       Beneficiary1
+  //     );
+  //     const hasRoleResult2_0 = await simpleT.hasRole(
+  //       BENEFICIARY_ROLE,
+  //       Beneficiary2
+  //     );
+  //     expect(hasRoleResult1_0).to.be.true;
+  //     expect(hasRoleResult2_0).to.be.true;
 
-      await simpleT
-        .connect(succesorTrustee)
-        .beneficiaryDeceasedProRata(Beneficiary2);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .beneficiaryDeceasedProRata(Beneficiary2);
 
-      const hasRoleResult1_1 = await simpleT.hasRole(
-        BENEFICIARY_ROLE,
-        Beneficiary1
-      );
-      const hasRoleResult2_1 = await simpleT.hasRole(
-        BENEFICIARY_ROLE,
-        Beneficiary2
-      );
-      expect(hasRoleResult1_1).to.be.true;
-      expect(hasRoleResult2_1).to.be.false;
-    });
+  //     const hasRoleResult1_1 = await simpleT.hasRole(
+  //       BENEFICIARY_ROLE,
+  //       Beneficiary1
+  //     );
+  //     const hasRoleResult2_1 = await simpleT.hasRole(
+  //       BENEFICIARY_ROLE,
+  //       Beneficiary2
+  //     );
+  //     expect(hasRoleResult1_1).to.be.true;
+  //     expect(hasRoleResult2_1).to.be.false;
+  //   });
 
-    it("beneficiaryDeceasedProRata: Event Emitted", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+  //   it("beneficiaryDeceasedProRata: Event Emitted", async () => {
+  //     const { wallets, simpleT } = await loadFixture(deployFixture);
 
-      // Assign assets
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+  //     // Assign assets
+  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
-      // Checkin Period Expires
-      const expiration = await simpleT.getExpirationTime();
-      await time.increaseTo(expiration);
+  //     // Checkin Period Expires
+  //     const expiration = await simpleT.getExpirationTime();
+  //     await time.increaseTo(expiration);
 
-      // Trustee Signs message to start trust execution
-      const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
-      const signedMessage = succesorTrustee.signMessage(
-        ethers.utils.arrayify(isDedHash)
-      );
+  //     // Trustee Signs message to start trust execution
+  //     const succesorTrustee = wallets["SuccessorTrustee1"];
+  //     const isDedHash = await simpleT.DED();
+  //     const signedMessage = succesorTrustee.signMessage(
+  //       ethers.utils.arrayify(isDedHash)
+  //     );
 
-      await simpleT
-        .connect(succesorTrustee)
-        .initiateTrustExecution(signedMessage);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .initiateTrustExecution(signedMessage);
 
-      // Get Beneficiary 2 details
-      const Beneficiary2 = wallets["Beneficiary2"].address;
-      const shares_Beneficiary2_0 = await simpleT.beneficiaryShares(
-        Beneficiary2
-      );
+  //     // Get Beneficiary 2 details
+  //     const Beneficiary2 = wallets["Beneficiary2"].address;
+  //     const shares_Beneficiary2_0 = await simpleT.beneficiaryShares(
+  //       Beneficiary2
+  //     );
 
-      // Specify that a beneficiary deceased pro-rata
-      await expect(
-        await simpleT
-          .connect(succesorTrustee)
-          .beneficiaryDeceasedProRata(Beneficiary2)
-      )
-        .to.emit(simpleT, "BeneficiaryRemoved")
-        .withArgs(succesorTrustee.address, Beneficiary2, shares_Beneficiary2_0);
-    });
+  //     // Specify that a beneficiary deceased pro-rata
+  //     await expect(
+  //       await simpleT
+  //         .connect(succesorTrustee)
+  //         .beneficiaryDeceasedProRata(Beneficiary2)
+  //     )
+  //       .to.emit(simpleT, "BeneficiaryRemoved")
+  //       .withArgs(succesorTrustee.address, Beneficiary2, shares_Beneficiary2_0);
+  //   });
 
-    it("beneficiaryDeceasedProRata: Event Emitted 2", async () => {
-      const { wallets, simpleT } = await loadFixture(deployFixture);
+  //   it("beneficiaryDeceasedProRata: Event Emitted 2", async () => {
+  //     const { wallets, simpleT } = await loadFixture(deployFixture);
 
-      // Assign assets
-      await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
+  //     // Assign assets
+  //     await simpleT.connect(wallets["Grantor2"]).assignAssetsToTrust();
 
-      // Checkin Period Expires
-      const expiration = await simpleT.getExpirationTime();
-      await time.increaseTo(expiration);
+  //     // Checkin Period Expires
+  //     const expiration = await simpleT.getExpirationTime();
+  //     await time.increaseTo(expiration);
 
-      // Trustee Signs message to start trust execution
-      const succesorTrustee = wallets["SuccessorTrustee1"];
-      const isDedHash = await simpleT.DED();
-      const signedMessage = succesorTrustee.signMessage(
-        ethers.utils.arrayify(isDedHash)
-      );
+  //     // Trustee Signs message to start trust execution
+  //     const succesorTrustee = wallets["SuccessorTrustee1"];
+  //     const isDedHash = await simpleT.DED();
+  //     const signedMessage = succesorTrustee.signMessage(
+  //       ethers.utils.arrayify(isDedHash)
+  //     );
 
-      await simpleT
-        .connect(succesorTrustee)
-        .initiateTrustExecution(signedMessage);
+  //     await simpleT
+  //       .connect(succesorTrustee)
+  //       .initiateTrustExecution(signedMessage);
 
-      const Beneficiary2 = wallets["Beneficiary2"].address;
-      const shares_Beneficiary2_0 = await simpleT.beneficiaryShares(
-        Beneficiary2
-      );
+  //     const Beneficiary2 = wallets["Beneficiary2"].address;
+  //     const shares_Beneficiary2_0 = await simpleT.beneficiaryShares(
+  //       Beneficiary2
+  //     );
 
-      await expect(
-        await simpleT
-          .connect(succesorTrustee)
-          .beneficiaryDeceasedProRata(Beneficiary2)
-      )
-        .to.emit(simpleT, "BeneficiaryUpdatedProRata")
-        .withArgs(succesorTrustee.address, Beneficiary2, shares_Beneficiary2_0);
-    });
-  });
+  //     await expect(
+  //       await simpleT
+  //         .connect(succesorTrustee)
+  //         .beneficiaryDeceasedProRata(Beneficiary2)
+  //     )
+  //       .to.emit(simpleT, "BeneficiaryUpdatedProRata")
+  //       .withArgs(succesorTrustee.address, Beneficiary2, shares_Beneficiary2_0);
+  //   });
+  // });
 });
