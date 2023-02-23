@@ -26,7 +26,6 @@
     "watch": "yarn workspace @scaffold-eth/hardhat watch",
     "accounts": "yarn workspace @scaffold-eth/hardhat accounts",
     "balance": "yarn workspace @scaffold-eth/hardhat balance",
-    "verify": "yarn workspace @scaffold-eth/hardhat verify",
     "send": "yarn workspace @scaffold-eth/hardhat send",
     "server": "yarn workspace @scaffold-eth/server server",
     "ipfs": "yarn workspace @scaffold-eth/react-app ipfs",
@@ -72,4 +71,5 @@
     "//": "See https://github.com/facebook/create-react-app/issues/11773",
     "react-error-overlay": "6.0.9"
   }
+
 }
