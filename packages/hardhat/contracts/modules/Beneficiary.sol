@@ -1,51 +1,35 @@
 pragma solidity 0.8.17;
 // SPDX-License-Identifier: AGPL-3.0
 
-import "./Trustee.sol";
+import "../interfaces/IBeneficiary.sol";
+
+// import "../mixins/TrusteeMixin.sol";
+import "../mixins/CheckInMixin.sol";
+import "../mixins/BeneficiaryMixin.sol";
+
 
 /// @title Simple T
 /// @author sters.eth
 /// @notice Contract will has functions for Beneficiaries
-contract Beneficiary is Trustee {
-    event BeneficiaryAdded(address sender, address account, uint256 shares);
-    event BeneficiaryUpdated(address sender, address account, uint256 shares);
-    event BeneficiaryUpdatedProRata(
-        address sender, 
-        address removed,  
-        uint256 shares_redistributed        
-    );
-    event BeneficiaryRemoved(address sender, address beneficiary, uint256 shares);
-    event AssetsReleased(address to, uint256 amount);
-    event AssetsReceived(address from, uint256 amount);
 
-    uint256 public totalShares;
-    uint256 public totalGenerations=1;
 
-    mapping(address => address) public descendantsProgenitor;
-    mapping(address => uint256) public beneficiaryShares;
-    mapping(address => uint256) public descendantsShares;
-    mapping(address => address[])  public descendants;
-
-    mapping(uint256 => address[]) public generations;
-    mapping(address => uint256) public beneficiaryGeneration;
-
-    mapping(address => bool) public noDescendants;
-    mapping(address => bool) public isDeceased;
-    mapping(address => bool) public hasLivingDescendants;
-    mapping(address => bool) public beneficiaryHasClaimed;
-    address[] public beneficiaries;
+contract Beneficiary is CheckInMixin, BeneficiaryMixin, IBeneficiary {
 
     /// @dev returns array of addresses with beneficiaries
     function getBeneficiaries() external view returns (address[] memory) {
-        return beneficiaries;
+        return _initializableStore().beneficiaries;
     }
 
 
     /// @dev returns array of addresses with beneficiaries shares
-    function getAddressShares(address _addr) external view returns (uint256) {
-        return beneficiaryShares[_addr];
+    function getBeneficiaryShares(address _addr) external view returns (uint256) {
+        return _initializableStore().beneficiaryShares[_addr];
     }
 
+    /// @dev returns array of addresses with beneficiaries
+    function getTotalShares() external view returns (uint256) {
+        return _initializableStore().totalShares;
+    }
 
     /**
      * @dev Trustee will finalize beneficiary addresses.
@@ -53,9 +37,9 @@ contract Beneficiary is Trustee {
      * @param shares_ ordered array of shares associated with the beneficiary.
      */
     function setBeneficiaries(address[] memory _beneficiaries, uint256[] memory shares_)
-        public
-        isState(TrustStates.Active)
-        onlyRole(INITIAL_TRUSTEE_ROLE) {
+        external
+        // isState(TrustStates.Active)
+        onlyRole(_initializableStore().INITIAL_TRUSTEE_ROLE) {
         
         require(
             _beneficiaries.length > 0,
@@ -67,60 +51,7 @@ contract Beneficiary is Trustee {
             "Beneficiary: beneficiaries and shares must have equal length."
         );
 
-        for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            _addBeneficiary(_beneficiaries[i], shares_[i]);
-        }
-    }
-
-
-    /**
-     * @dev Add a new payee to the contract.
-     * @param account The address of the payee to add.
-     * @param shares_ The number of shares owned by the payee.
-     */
-    function _addBeneficiary(address account, uint256 shares_) private {
-        require(account != address(0), "Beneficiary: account is the zero address");
-        require(shares_ > 0, "Beneficiary: shares must be greater than 0");
-
-        uint256 currentbeneficiaryShares = beneficiaryShares[account];
-        beneficiaryShares[account] = shares_;
-        if (currentbeneficiaryShares == 0 ) {
-            beneficiaries.push(account);
-            grantRole(BENEFICIARY_ROLE, account);
-            totalShares = totalShares + shares_;
-            emit BeneficiaryAdded(_msgSender(),account, shares_);
-
-        }
-        else {
-            totalShares = totalShares - currentbeneficiaryShares + shares_;
-            emit BeneficiaryUpdated(_msgSender(),account, shares_);
-        }
-
-    }
-
-
-    /**
-     * @dev remove a beneficiary.
-     * Removing a beneficiary
-     * @param beneficiaryAddress address of beneficiary to remove.
-     */
-    function _removeBeneficiary(address beneficiaryAddress) internal {
-        require(beneficiaries.length>1, "Cannot remove last beneficiary. Please add replacement before removal.");
-
-        uint256 previousShares = beneficiaryShares[beneficiaryAddress];
-        for (
-            uint256 idx = 0;
-            idx < beneficiaries.length;
-            idx++
-        ) {
-            if(beneficiaryAddress == beneficiaries[idx]){
-                beneficiaries[idx] = beneficiaries[beneficiaries.length - 1];
-                beneficiaries.pop(); 
-                beneficiaryShares[beneficiaryAddress]=0;                
-                _revokeRole(BENEFICIARY_ROLE, beneficiaryAddress);                 
-                emit BeneficiaryRemoved(_msgSender(), beneficiaryAddress, previousShares);
-            }
-        }
+        _setBeneficiaries(_beneficiaries, shares_);
     }
 
 
@@ -128,10 +59,43 @@ contract Beneficiary is Trustee {
         _removeBeneficiary(beneficiaryAddress);
     }
 
-    /** Internal because active trustee may only remove via designated method. E.g. proRata, perStirpes */
-    function activeTrusteeRemoveBeneficiary(address beneficiaryAddress) internal onlyActiveTrustee {
-        _removeBeneficiary(beneficiaryAddress);
+
+    /**
+     * @notice transfers fungibles to the beneficiaries
+     */
+    function claim() 
+        external 
+        onlyRole(_initializableStore().BENEFICIARY_ROLE) 
+        // TODO: MUST REINSTATE
+        // isState(TrustStates.Executed) 
+        {
+            // require(
+            //     trustState == TrustStates.Executing, 
+            //     "Trust is not in the expected TrustState"
+            // );
+        require(_initializableStore().beneficiaryShares[msg.sender] > 0, "SimpleT: account has no shares");
+        require( !(_initializableStore().beneficiaryHasClaimed[msg.sender]) , "SimpleT: Beneficary has already claimed");
+        
+        uint256 totalTokens = _initializableStore().grantors.length;
+        uint256[] memory tokenIds = new uint256[](totalTokens);
+        uint256[] memory amounts = new uint256[](totalTokens);
+
+        uint256 shares = _initializableStore().beneficiaryShares[msg.sender];
+
+        // Iterate over Grantor wallets to get 1155 token IDs
+        for (uint256 i = 0; i < totalTokens; i++) {
+            
+            address grantorAddress = _initializableStore().grantors[i];
+            if (_initializableStore().assignedAssets[grantorAddress]) {
+                uint256 tokenId = _initializableStore()._tokenIds[grantorAddress];
+                tokenIds[i] = tokenId;
+                amounts[i] = _initializableStore().TOKENS_PER_GRANTOR * shares / _initializableStore().totalShares;
+            }
+        }
+        _initializableStore().beneficiaryHasClaimed[msg.sender] = true;
+        _safeBatchTransferFrom(address(this), msg.sender, tokenIds, amounts, "");
     }
+
 
     /**  
      * If you are using this the Trust is specified as Pro Rata and 
@@ -153,29 +117,30 @@ contract Beneficiary is Trustee {
     function beneficiaryDeceasedProRata(address beneficiary) 
         external 
         onlyActiveTrustee 
-        isDistribution(DistributionTypes.proRata) {
+        // isDistribution(DistributionTypes.proRata) 
+        {
         require(findIsABeneficiary(beneficiary), "Passed address is not a current beneficiary" );
         
         // Determine LCD
-        uint256 NToRedistributeTo = beneficiaries.length - 1;
+        uint256 NToRedistributeTo = _initializableStore().beneficiaries.length - 1;
         // Multiply all shares by LCD
-        totalShares *= NToRedistributeTo;
+        _initializableStore().totalShares *= NToRedistributeTo;
         // Add to all other Beneficiary shares
-        uint256 sharesToRedistribute = beneficiaryShares[beneficiary];
+        uint256 sharesToRedistribute = _initializableStore().beneficiaryShares[beneficiary];
         // Add beneficiary to list of deceased beneficiaries
         // deceasedBeneficiaries.push(beneficiary);
         // Remove beneficary so that no longer included in bene list
-        activeTrusteeRemoveBeneficiary(beneficiary);
+        _activeTrusteeRemoveBeneficiary(beneficiary);
         // Iterate over remaining beneficiaries and increase their shares
-        for (uint i=0; i < beneficiaries.length; i++) {
-            address currentBeneficiary = beneficiaries[i];
-            uint256 currentShares = beneficiaryShares[currentBeneficiary];
-            beneficiaryShares[currentBeneficiary] = (
+        for (uint i=0; i < _initializableStore().beneficiaries.length; i++) {
+            address currentBeneficiary = _initializableStore().beneficiaries[i];
+            uint256 currentShares = _initializableStore().beneficiaryShares[currentBeneficiary];
+            _initializableStore().beneficiaryShares[currentBeneficiary] = (
                 NToRedistributeTo * currentShares
                 ) + sharesToRedistribute;
         }   
         emit BeneficiaryUpdatedProRata(
-            _msgSender(), 
+            msg.sender, 
             beneficiary,  
             sharesToRedistribute
         );
@@ -212,33 +177,33 @@ contract Beneficiary is Trustee {
         );
         
         // Set the Beneficiary to deceased
-        isDeceased[deadBeneficiary] = true;
+        _initializableStore().isDeceased[deadBeneficiary] = true;
 
         // Check if descendants were specified
         if (beneficiaryDescendants.length > 0) {
-            hasLivingDescendants[deadBeneficiary] = true;
-            uint256 previousGeneration = beneficiaryGeneration[deadBeneficiary];
+            _initializableStore().hasLivingDescendants[deadBeneficiary] = true;
+            uint256 previousGeneration = _initializableStore().beneficiaryGeneration[deadBeneficiary];
             uint256 descendantGeneration = previousGeneration+1;
-            if (descendantGeneration>totalGenerations) {
-                totalGenerations = descendantGeneration;
+            if (descendantGeneration>_initializableStore().totalGenerations) {
+                _initializableStore().totalGenerations = descendantGeneration;
             }
 
             // If descendants are specified iterate over and add to descendants list
             for (uint i=0; i < beneficiaryDescendants.length; i++) {
                 address newBeneficiary = beneficiaryDescendants[i];
                 // Specify Descendant's generation
-                beneficiaryGeneration[newBeneficiary]=descendantGeneration;
+                _initializableStore().beneficiaryGeneration[newBeneficiary]=descendantGeneration;
                 // Add descendant to generational list of descendants
-                generations[descendantGeneration].push(newBeneficiary);
+                _initializableStore().generations[descendantGeneration].push(newBeneficiary);
                 // Descendants specific to a progenator
-                descendants[deadBeneficiary].push(newBeneficiary);                        
+                _initializableStore().descendants[deadBeneficiary].push(newBeneficiary);                        
 
                 // Specify the progenitor of the descendant
-                descendantsProgenitor[newBeneficiary] = deadBeneficiary;
+                _initializableStore().descendantsProgenitor[newBeneficiary] = deadBeneficiary;
             }
         } else {
             // Default is false so the following line should be removed in the future
-            hasLivingDescendants[deadBeneficiary] = false;
+            _initializableStore().hasLivingDescendants[deadBeneficiary] = false;
         }
     }
 
@@ -253,49 +218,49 @@ contract Beneficiary is Trustee {
         onlyActiveTrustee 
         {
         require( 
-            isDeceased[deadBeneficiary],
+            _initializableStore().isDeceased[deadBeneficiary],
             "Beneficiary not specified as dead. Cannot undo."
         );
 
         // Set the Beneficiary to deceased
-        isDeceased[deadBeneficiary] = false;
+        _initializableStore().isDeceased[deadBeneficiary] = false;
 
         // Check if descendants were specified
-        if (hasLivingDescendants[deadBeneficiary]) {
-            uint256 previousGeneration = beneficiaryGeneration[deadBeneficiary];
+        if (_initializableStore().hasLivingDescendants[deadBeneficiary]) {
+            uint256 previousGeneration = _initializableStore().beneficiaryGeneration[deadBeneficiary];
             uint256 descendantGeneration = previousGeneration+1;
 
             // Remove descendants
-            for ( uint256 i=0;  i < descendants[deadBeneficiary].length; i++ ) {
-                address descendantToRemove = descendants[deadBeneficiary][i];
+            for ( uint256 i=0;  i < _initializableStore().descendants[deadBeneficiary].length; i++ ) {
+                address descendantToRemove = _initializableStore().descendants[deadBeneficiary][i];
                 require(
-                    !isDeceased[descendantToRemove],
+                    !_initializableStore().isDeceased[descendantToRemove],
                     "A descendant has been marked deceased. Must undo 2nd gen descendands before previous gen."
                 );
                 // Reset progenitor & generation
-                descendantsProgenitor[descendantToRemove] = address(0);
-                beneficiaryGeneration[descendantToRemove]=0;
+                _initializableStore().descendantsProgenitor[descendantToRemove] = address(0);
+                _initializableStore().beneficiaryGeneration[descendantToRemove]=0;
 
                 for (
                     uint256 j = 0;
-                    j < generations[descendantGeneration].length;
+                    j < _initializableStore().generations[descendantGeneration].length;
                     j++
                     ) {
-                        if (descendantToRemove == generations[descendantGeneration][j]){
-                            generations[descendantGeneration][j] = generations[descendantGeneration][generations[descendantGeneration].length - 1];
-                            generations[descendantGeneration].pop();             
+                        if (descendantToRemove == _initializableStore().generations[descendantGeneration][j]){
+                            _initializableStore().generations[descendantGeneration][j] = _initializableStore().generations[descendantGeneration][_initializableStore().generations[descendantGeneration].length - 1];
+                            _initializableStore().generations[descendantGeneration].pop();             
                     }
                 }
             }
             // Beneficiary no longer has decendants
-            hasLivingDescendants[deadBeneficiary] = false;
+            _initializableStore().hasLivingDescendants[deadBeneficiary] = false;
             // Delete the dead beneficiary's descendants
-            delete descendants[deadBeneficiary];
+            delete _initializableStore().descendants[deadBeneficiary];
 
             
         } else {
             // Default is false so the following line should be removed in the future
-            hasLivingDescendants[deadBeneficiary] = false;
+            _initializableStore().hasLivingDescendants[deadBeneficiary] = false;
         }
         
 
@@ -321,17 +286,17 @@ contract Beneficiary is Trustee {
      *   If State 3: Redistribute evenly to Beneficiaries with State 1 and 2
      */
     function redistributeDeadWithNoDescendantPerStirpes() public {
-        for (uint i=1; i < totalGenerations+1; i++) {
-            address[] memory genBeneficiaries = generations[i];
+        for (uint i=1; i < _initializableStore().totalGenerations+1; i++) {
+            address[] memory genBeneficiaries = _initializableStore().generations[i];
             // Create an array of state 1 & 2 for state 3 redistribution
             uint256 N = NGenerationLivingLineage(genBeneficiaries);
             address[] memory livingLineage = new address[](N);
             for (uint j=0; j < N; j++) {
                 address currentBeneficiary = genBeneficiaries[j];
                 if (
-                 !isDeceased[currentBeneficiary] 
+                 !_initializableStore().isDeceased[currentBeneficiary] 
                  ||
-                 hasLivingDescendants[currentBeneficiary]
+                 _initializableStore().hasLivingDescendants[currentBeneficiary]
                 ) {
                 //   livingLineage.push(currentBeneficiary);
                   livingLineage[i]=currentBeneficiary;
@@ -343,21 +308,21 @@ contract Beneficiary is Trustee {
                 address currentBeneficiary = genBeneficiaries[j];
 
                 // If the current beneficiary is deceased redistribute
-                if (isDeceased[currentBeneficiary]) {
+                if (_initializableStore().isDeceased[currentBeneficiary]) {
                     // Remove the current Beneficiary from the generation 
-                    uint256 sharesToRedistribute = beneficiaryShares[currentBeneficiary];
+                    uint256 sharesToRedistribute = _initializableStore().beneficiaryShares[currentBeneficiary];
 
                     // If they have living descendants redistribute shares to descendants (living & dead)
                     // Shares to dead desceandants will be redistributed at next generation
-                    if (hasLivingDescendants[currentBeneficiary]) {
-                        address[] memory currentDescendants = descendants[currentBeneficiary];
+                    if (_initializableStore().hasLivingDescendants[currentBeneficiary]) {
+                        address[] memory currentDescendants = _initializableStore().descendants[currentBeneficiary];
                         uint256 NToRedistributeTo = currentDescendants.length;
                         // Set the beneficiary shares to zero
-                        beneficiaryShares[currentBeneficiary]=0;
+                        _initializableStore().beneficiaryShares[currentBeneficiary]=0;
                         // Iterate and redistribute
                         for (uint k=0; k < currentDescendants.length; k++) {
                             address currentDecendant = currentDescendants[k];
-                            beneficiaryShares[currentDecendant] += sharesToRedistribute/NToRedistributeTo;
+                            _initializableStore().beneficiaryShares[currentDecendant] += sharesToRedistribute/NToRedistributeTo;
                         }
                     }
                     // Otherwise redistribute to other beneficiaries at the same level (livingLineage)
@@ -370,7 +335,7 @@ contract Beneficiary is Trustee {
                             // Iterate and redistribute
                             for (uint k=0; k < livingLineage.length; k++) {
                                 address currentDecendant = livingLineage[k];
-                                beneficiaryShares[currentDecendant] += sharesToRedistribute/NToRedistributeTo;
+                                _initializableStore().beneficiaryShares[currentDecendant] += sharesToRedistribute/NToRedistributeTo;
                             }
                         }                        
                     }
@@ -388,22 +353,23 @@ contract Beneficiary is Trustee {
      */
     function resetTrustBeneficiaries() public {
         // Undo beneficiaries from max generation toward progenitor
-        for (uint256 i = totalGenerations; i > 1; i-- ) {
-            address[] memory generationBenecificiaries = generations[i];
+        for (uint256 i = _initializableStore().totalGenerations; i > 1; i-- ) {
+            address[] memory generationBenecificiaries = _initializableStore().generations[i];
             // Iterate over the generation beneficiaries
             for (uint256 j = 0; j < generationBenecificiaries.length; j++) {
                 address beneficiary = generationBenecificiaries[j];
                 // If the beneficiary was specified deceased, undo
-                if (isDeceased[beneficiary]) {
+                if (_initializableStore().isDeceased[beneficiary]) {
                     undoBeneficiaryDeceasedPerStirpes(beneficiary);
                 }
             }
             // Now remove the generation
-            delete generations[i];
+            delete _initializableStore().generations[i];
         }
         // Reset the first generatrion to the original beneficiaries
-        generations[1]=beneficiaries;
+        _initializableStore().generations[1]=_initializableStore().beneficiaries;
     }
+
     /**
      * This function will return the number of beneficiaries
      * in a generation who are alive or dead with decendants.
@@ -414,9 +380,9 @@ contract Beneficiary is Trustee {
         for (uint i=0; i < generation.length; i++) {
             address currentBeneficiary = generation[i];
             if (
-                !isDeceased[currentBeneficiary] 
+                !_initializableStore().isDeceased[currentBeneficiary] 
                 ||
-                hasLivingDescendants[currentBeneficiary]
+                _initializableStore().hasLivingDescendants[currentBeneficiary]
             ) {
                 N+=1;
             }
@@ -426,16 +392,15 @@ contract Beneficiary is Trustee {
 
     /// @dev returns the number of grantors
     function getBeneficiariesLength() public view returns (uint256) {
-        return beneficiaries.length;
+        return _initializableStore().beneficiaries.length;
     }
 
   
-
     /// @dev iterates over beneficiary array to find passed address
     function findIsABeneficiary(address _beneficiary) public view returns (bool isABeneficiary) {
         isABeneficiary = false;
-        for (uint i=0; i < beneficiaries.length; i++) {
-            if (_beneficiary == beneficiaries[i]) {
+        for (uint i=0; i < _initializableStore().beneficiaries.length; i++) {
+            if (_beneficiary == _initializableStore().beneficiaries[i]) {
                 isABeneficiary = true;
                 break;
             }
