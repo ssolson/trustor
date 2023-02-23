@@ -4,13 +4,16 @@ const chalk = require("chalk");
 
 // require("@nomiclabs/hardhat-waffle");
 require("@nomicfoundation/hardhat-chai-matchers");
-require("@tenderly/hardhat-tenderly");
+// require("@tenderly/hardhat-tenderly");
 
-require("hardhat-deploy");
-
+// require("hardhat-deploy");
+require("@nomiclabs/hardhat-web3");
 require("@eth-optimism/hardhat-ovm");
 require("@nomiclabs/hardhat-ethers");
-require("@nomiclabs/hardhat-etherscan");
+// Interfers with hardhat-router
+// require("@nomiclabs/hardhat-etherscan");
+
+require("@synthetixio/hardhat-router");
 
 require("hardhat-contract-sizer");
 
@@ -254,6 +257,12 @@ module.exports = {
   etherscan: {
     // apiKey: "DNXJA8RX2Q3VZ4URQIWP7Z68CJXQZSC6AW",
     apiKey: "RQD26QHHW5EMGRK4BCPTMU22576IU17FVA",
+  },
+  router: {
+    paths: {
+      deployments: "deployments", // path to store deployment artifacts
+      modules: "modules", // path where to find module contracts
+    },
   },
 };
 
