@@ -1,6 +1,6 @@
 ```bash
 git clone https://github.com/ssolson/trustor.git
-cd stealth_trustor
+cd trustor
 git checkout -b feature_branch
 yarn install
 ```
