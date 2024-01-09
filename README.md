@@ -1,5 +1,5 @@
 ```bash
-git clone https://github.com/ssolson/stealth_trustor.git
+git clone https://github.com/ssolson/trustor.git
 cd stealth_trustor
 git checkout -b feature_branch
 yarn install
