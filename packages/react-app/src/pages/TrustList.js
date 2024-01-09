@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Table, Tag, Button } from "antd";
+import React, { useEffect, useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
+import { Table, Tag, Button } from 'antd';
 // import externalContracts from "../contracts/external_contracts";
-import simpleT_ABI from "../contracts/SimpleT_ABI";
-import { useContractLoader, useContractReader } from "eth-hooks";
+import simpleT_ABI from '../contracts/SimpleT_ABI';
+import { useContractLoader, useContractReader } from 'eth-hooks';
 
-import { addNewTrust, getUserTrusts, getTrustData, updateTrustBlockchainValues } from "../helpers/database";
-import { readContract } from "../helpers/contracts";
+import {
+  addNewTrust,
+  getUserTrusts,
+  getTrustData,
+  updateTrustBlockchainValues,
+} from '../helpers/database';
+import { readContract } from '../helpers/contracts';
 
 export default function TrustList(props) {
   // Get and set the user Trust Addresses
@@ -15,7 +20,7 @@ export default function TrustList(props) {
 
   // Set user data by calling the database
   useEffect(async () => {
-    console.log("address", props.address);
+    console.log('address', props.address);
     // TODO: Check if database is available
     const user_data_promise = getUserTrusts(props.address);
     const user_data = await user_data_promise;
@@ -26,8 +31,8 @@ export default function TrustList(props) {
   let trust_contracts = {
     31337: {
       localhost: {
-        name: "localhost",
-        chainId: "31337",
+        name: 'localhost',
+        chainId: '31337',
         contracts: {},
       },
     },
@@ -36,10 +41,10 @@ export default function TrustList(props) {
   // Add address and abi for each contract to object
   if (userData) {
     Object.keys(userData).forEach((trust_address, index) => {
-      if (trust_address != "_id") {
-        trust_contracts[31337]["localhost"]["contracts"][trust_address] = {
+      if (trust_address != '_id') {
+        trust_contracts[31337]['localhost']['contracts'][trust_address] = {
           address: trust_address,
-          abi: simpleT_ABI["abi"],
+          abi: simpleT_ABI['abi'],
         };
       }
     });
@@ -59,8 +64,8 @@ export default function TrustList(props) {
   //  const address = contract ? contract.address : "";
   if (userData) {
     Object.keys(userData).forEach(async (trust_address, index) => {
-      if (trust_address != "_id") {
-        let contract = contracts ? contracts[trust_address] : "";
+      if (trust_address != '_id') {
+        let contract = contracts ? contracts[trust_address] : '';
 
         // Use helper to read contract
         let contractDisplay = readContract(contract, props.userSigner);
@@ -91,20 +96,20 @@ export default function TrustList(props) {
   // Define the layour of the trusts table
   const columns = [
     {
-      title: "Name",
-      dataIndex: "name",
+      title: 'Name',
+      dataIndex: 'name',
       sorter: true,
     },
     {
-      title: "Address",
-      dataIndex: "_id",
-      key: "_id",
-      render: text => <Link to={`${text}`}>{text}</Link>,
+      title: 'Address',
+      dataIndex: '_id',
+      key: '_id',
+      render: (text) => <Link to={`${text}`}>{text}</Link>,
     },
     {
-      title: "Role",
-      dataIndex: "role",
-      key: "role",
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
     },
   ];
 
@@ -116,13 +121,13 @@ export default function TrustList(props) {
     // TODO: This is used in sideBar too, extract to single
     const responsePromise = getUserTrusts(props.address);
     const userTrusts = await responsePromise;
-    console.log("userTrusts", userTrusts);
+    console.log('userTrusts', userTrusts);
 
     let trusts = [];
     if (userTrusts !== undefined && userTrusts !== null) {
       // TODO need to make this one request of multiple trusts
       for (const [trust_address, value] of Object.entries(userTrusts)) {
-        if (trust_address != "_id") {
+        if (trust_address != '_id') {
           // SYNC Chain with Database (this is also how 'blockchain'entries are initially added)
           const response = await fetch(`http://localhost:5000/trust/${trust_address}`);
           if (!response.ok) {
@@ -131,11 +136,11 @@ export default function TrustList(props) {
             return;
           } else {
             let trustData = await response.json();
-            trustData["role"] = userTrusts[trust_address]["role"];
+            trustData['role'] = userTrusts[trust_address]['role'];
             trusts.push(trustData);
           }
         }
-        console.log("trusts", trusts);
+        console.log('trusts', trusts);
       }
     }
 
@@ -146,14 +151,14 @@ export default function TrustList(props) {
 
   return (
     <div>
-      <div style={{ padding: 25, marginTop: 100, width: 400, margin: "auto" }} />
+      <div style={{ padding: 25, marginTop: 100, width: 400, margin: 'auto' }} />
       <h3>Your Trusts</h3>
       <Table columns={columns} dataSource={records} />
       <NavLink className="nav-link" to="/trusts/new">
-        <Button type={"primary"}> New Trust </Button>
+        <Button type={'primary'}> New Trust </Button>
       </NavLink>
 
-      <Button
+      {/* <Button
         type={"primary"}
         onClick={async () => {
           console.log("You clicked the button!");
@@ -161,7 +166,7 @@ export default function TrustList(props) {
         }}
       >
         Click it
-      </Button>
+      </Button> */}
     </div>
   );
 }

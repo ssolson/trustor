@@ -2,14 +2,20 @@ const { utils } = require("ethers");
 const fs = require("fs");
 const chalk = require("chalk");
 
-require("@nomiclabs/hardhat-waffle");
-require("@tenderly/hardhat-tenderly");
+// require("@nomiclabs/hardhat-waffle");
+require("@nomicfoundation/hardhat-chai-matchers");
+// require("@tenderly/hardhat-tenderly");
 
-require("hardhat-deploy");
-
+// require("hardhat-deploy");
+require("@nomiclabs/hardhat-web3");
 require("@eth-optimism/hardhat-ovm");
 require("@nomiclabs/hardhat-ethers");
-require("@nomiclabs/hardhat-etherscan");
+// Interfers with hardhat-router
+// require("@nomiclabs/hardhat-etherscan");
+
+require("@synthetixio/hardhat-router");
+
+require("hardhat-contract-sizer");
 
 const { isAddress, getAddress, formatUnits, parseUnits } = utils;
 
@@ -230,16 +236,7 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.8.14",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.6.7",
+        version: "0.8.17",
         settings: {
           optimizer: {
             enabled: true,
@@ -257,9 +254,15 @@ module.exports = {
       default: 0, // here this will by default take the first account as deployer
     },
   },
-  etherscan: {    
-    // apiKey: "DNXJA8RX2Q3VZ4URQIWP7Z68CJXQZSC6AW", 
-    apiKey: "RQD26QHHW5EMGRK4BCPTMU22576IU17FVA", 
+  etherscan: {
+    // apiKey: "DNXJA8RX2Q3VZ4URQIWP7Z68CJXQZSC6AW",
+    apiKey: "RQD26QHHW5EMGRK4BCPTMU22576IU17FVA",
+  },
+  router: {
+    paths: {
+      deployments: "deployments", // path to store deployment artifacts
+      modules: "modules", // path where to find module contracts
+    },
   },
 };
 
